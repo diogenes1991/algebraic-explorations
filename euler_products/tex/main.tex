@@ -1,0 +1,278 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{remark}[theorem]{Remark}
+\newtheorem{definition}[theorem]{Definition}
+\newtheorem{conjecture}[theorem]{Conjecture}
+
+\newcommand{\zD}{\zeta_D}
+\newcommand{\PE}{\mathrm{PE}}
+
+\title{Term-by-Term Extraction of Euler Products into\\ Ratios of Riemann Zeta Values\\
+\large Working notes, with Mathar (arXiv:1106.4038) as prior art}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+For a multiplicative arithmetic function $a(n)$ with local (Bell series) factor
+$B_p(x) = \sum_{e\ge0} a(p^e)x^e$ at $x=p^{-s}$, we consider the problem of writing
+the Euler product $\zD(s)=\prod_p B_p(p^{-s})$ as an (in general infinite) product
+of Riemann zeta values $\zeta(u_is-l_i)^{\pm\gamma_i}$. We record the exact
+statement of the underlying identity, formalize the term-by-term extraction step
+as an algorithm on exact rational functions of $x=p^{-s}$, and identify
+R.~J.~Mathar's survey \cite{Mathar2011} as an existing treatment of the same
+question, with a worked example (the Hadamard square of Euler's totient) that is
+structurally identical to our target case $1/\varphi(n)^2$. We use this to
+calibrate our own algorithm before pushing it further.
+\end{abstract}
+
+\tableofcontents
+
+\section{Setup}
+
+\begin{definition}[Dirichlet series]
+For an arithmetic function $a:\mathbb{Z}_{\ge1}\to\mathbb{C}$,
+\[
+\zD(s) \;\equiv\; \sum_{n\ge1} \frac{a(n)}{n^s}.
+\]
+\end{definition}
+
+If $a$ is multiplicative, $\zD$ factors over primes into local Bell series
+\[
+\zD(s) = \prod_p B_p(p^{-s}), \qquad B_p(x) \equiv \sum_{e\ge0} a(p^e)\, x^e .
+\]
+For all functions of interest here $B_p(x)$ is a \emph{rational} function of
+$x$ with coefficients that are (typically polynomial or rational) functions of
+$p$ — this rationality, not multiplicativity per se, is what makes the zeta
+extraction go through, since it lets us write $B_p(x) = \mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$
+with $\mathrm{NUM}_p,\mathrm{DEN}_p \in \mathbb{Q}(p)[x]$.
+
+\subsection{The target identity}
+
+Euler's product formula gives, for each fixed pair $(l,u)\in\mathbb{Z}\times\mathbb{Z}_{\ge1}$
+and $\gamma\in\mathbb{Z}$,
+\begin{align}
+\prod_p (1 - p^{\,l-us})^{\gamma} &= \zeta(us-l)^{-\gamma}, \label{eq:euler-minus}\\
+\prod_p (1 + p^{\,l-us})^{\gamma} &= \frac{\zeta(us-l)^{\gamma}}{\zeta(2us-2l)^{\gamma}}. \label{eq:euler-plus}
+\end{align}
+Equation \eqref{eq:euler-minus} is immediate from the Euler product of $\zeta$.
+Equation \eqref{eq:euler-plus} follows by writing $1+y = (1-y^2)/(1-y)$ with
+$y=p^{l-us}$ and applying \eqref{eq:euler-minus} twice.
+
+The extraction problem is: given $B_p(x) = \mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$,
+find a (possibly infinite) factorization
+\begin{equation}
+\label{eq:master-factorization}
+B_p(x) = \prod_{i\ge1} (1 - S_i\, p^{\,l_i - u_i s})^{\gamma_i}, \qquad S_i\in\{+1,-1\},\ l_i,u_i,\gamma_i\in\mathbb{Z},\ u_i\ge1,
+\end{equation}
+ordered by increasing $u_i$ (and, for ties, decreasing $l_i$) so that the
+factors are listed in order of decreasingly restrictive abscissa of convergence.
+Substituting \eqref{eq:euler-minus}--\eqref{eq:euler-plus} termwise then gives
+$\zD(s)$ as a product/ratio of zeta values.
+
+\subsection{The extraction algorithm (informal statement)}
+
+Our Mathematica prototype (\texttt{Extractor}/\texttt{GetCharsTerm2}/\texttt{Handler})
+implements \eqref{eq:master-factorization} by:
+\begin{enumerate}
+\item Expand $\mathrm{NUM}_p(x)$ and $\mathrm{DEN}_p(x)$ as power series in $x$ to some working order $N$.
+\item Identify the lowest-order term at which $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$
+(as formal series, normalized to constant term $1$) disagree; this fixes a
+candidate binomial factor $(1-Sp^{l-us})^{\gamma}$ whose own series expansion
+cancels the discrepancy to that order.
+\item Divide it out (equivalently, multiply/divide $\mathrm{NUM}_p/\mathrm{DEN}_p$ by
+$(1-Sp^{l-us})^{-\gamma}$) and recurse on the residual series.
+\item Terminate if the residual becomes exactly $1$ (finite closed form); otherwise
+continue and only conjecture the pattern in $(l_i,u_i,\gamma_i)$ from a run of
+consecutive terms.
+\end{enumerate}
+This is a discretized, order-by-order relative of two established procedures:
+
+\begin{itemize}
+\item \textbf{Selberg--Delange.} Writing $F(s)=\zeta(s)^{\rho}G(s)$ with $G$
+holomorphic and non-vanishing near $s=1$, only finitely many derivatives of
+$G$ at $s=1$ are needed for the asymptotic count of $\sum_{n\le x}a(n)$. Our
+procedure is more ambitious: we attempt to represent $G(s)$ \emph{itself} as an
+infinite product of zeta values, which is a much stronger (and not always
+achievable in closed form) statement.
+\item \textbf{Plethystic exponential/logarithm} (Feng--Hanany--He and related
+physics literature). Peeling off the next-order term of a generating function
+and recursing is exactly the plethystic logarithm's algorithm; termination
+occurs in the same ``nice'' (free / totally multiplicative generator) cases and
+fails to terminate in general.
+\end{itemize}
+
+\section{Mathar's survey: the same construction, independently arrived at}
+
+R.~J.~Mathar's survey \emph{Survey of Dirichlet Series of Multiplicative
+Arithmetic Functions} (arXiv:1106.4038, published version cross-checked here)
+\cite{Mathar2011} sets up \emph{precisely} the identity of
+\S1.1 above, in his eq.~(1.5)--(1.7). Quoting the structure (paraphrased, our
+numbering matches his where noted):
+
+\begin{itemize}
+\item His eq.~(1.5)--(1.6): the Bell series is written as an infinite product
+\[
+\zD(s) = \prod_p \prod_{i=1}^{\infty} (1-S_i p^{\,l_i-u_is})^{\gamma_i},
+\]
+with the ordering convention: smallest $u_i$ first, and for ties, largest
+$l_i$ first — this is verbatim our ordering convention above, so there is no
+ambiguity that this is the same object.
+\item His eq.~(1.7) is exactly our \eqref{eq:euler-minus}--\eqref{eq:euler-plus}.
+\item He is explicit that truncating this product is a numerical evaluation
+tool for $\zD(s)$, and that in the ``nice'' cases the product over $p$ is a
+\emph{finite} product/ratio of cyclotomic polynomials in $p^{-s}$, which then
+becomes a finite product of zeta values; in the general case the expansion is
+genuinely infinite.
+\end{itemize}
+
+So: Mathar's survey is not merely adjacent work, it is (as far as the general
+framework goes) the same construction, published in 2011/2012. This does not
+make our project redundant — his paper is a table of results with sketched
+derivations, not a general algorithm with a reusable implementation, and he does
+not treat the plethystic/Selberg--Delange framing at all — but it is the correct
+reference point to (a) validate our extraction algorithm against, and (b) cite
+as prior art.
+
+\subsection{Worked example that matches our target: $\varphi^2(n)$}
+
+Mathar's \S3.13.1 (his eq.~(3.75)--(3.79)) works the case most structurally
+relevant to us. Euler's totient has master equation
+\[
+\varphi(p^e) = (p-1)p^{e-1}, \quad e>0,
+\]
+Bell series $\varphi(n)\mapsto \zeta(s-1)/\zeta(s)$ (his eq.~(3.76), a finite
+closed form — the ``nice''/terminating case). Squaring the master equation
+pointwise (Hadamard square, \emph{not} Dirichlet self-convolution) gives
+\[
+a(p^e) = (p-1)^2 p^{2e-2}, \qquad B_p(x) = 1+\sum_{e\ge1}(p-1)^2p^{2e-2}x^e
+= \frac{1-2p^{1-s}+p^{-s}}{1-p^{2-s}}
+= \frac{1-(2p-1)x}{1-p^2x}, \quad x=p^{-s}.
+\]
+This is his eq.~(3.78). The numerator is \emph{not} a perfect binomial power in
+$x$ alone (the coefficient $2p-1$ is not a pure power of $p$), so the extraction
+does not terminate at one factor; Mathar reports the result as an infinite
+product (his eq.~(3.79)):
+\begin{align}
+\varphi^2(n) &\mapsto \zeta(s-2)\prod_p
+(1-p^{1-s})^2(1+p^{-s})^{-1}(1-p^{2-2s})^{-1}(1+p^{1-2s})^{-2}\notag\\
+&\quad\times(1-p^{3-3s})^{-2}(1+p^{2-3s})^{-4}(1-p^{1-3s})^{-2}
+(1-p^{4-4s})^{-3}(1+p^{3-4s})^{-8}(1-p^{2-4s})^{-5}\notag\\
+&\quad\times(1+p^{1-4s})^{-2}(1-p^{5-5s})^{-6}(1+p^{4-5s})^{-16}(1-p^{3-5s})^{-16}
+(1+p^{2-5s})^{-8}(1-p^{1-5s})^{-2}\cdots,\ s>3. \label{eq:mathar-phi2}
+\end{align}
+The exponents $2,1,1,2,2,4,2,3,8,5,2,6,16,16,8,2,\dots$ are exactly the sort of
+sequence our \texttt{Handler} step is meant to conjecture and (ideally) prove
+closed-form recursions for; this gives us a fully independent, already-published
+check case with 16 confirmed terms to validate our Haskell reimplementation
+against before trusting it on new functions.
+
+\begin{remark}
+Note $\varphi^2(n)$ (pointwise square) is \emph{not} our target $1/\varphi(n)^2$
+(pointwise reciprocal square). The two are related only in that both fail to be
+expressible via the algebra of Dirichlet convolution applied to $\zeta$-ratios
+directly (unlike, e.g., $\varphi(n)\star 1 = n$, which is transparent from
+\eqref{eq:master-factorization} with a single finite factor). We work out our
+own case in \S3.
+\end{remark}
+
+\section{Setting up $1/\varphi(n)^2$}
+
+\begin{proposition}
+\label{prop:bell-1overphi2}
+The Bell series of $1/\varphi(n)^2$ at prime $p$ is
+\[
+B_p(x) = \frac{(p-1)^2p^2 + (2p-1)x}{(p-1)^2(p^2-x)}, \qquad x = p^{-s}.
+\]
+\end{proposition}
+
+\begin{proof}
+Master equation: $a(p^e) = 1/\varphi(p^e)^2 = (p-1)^{-2}p^{-2e+2}$ for $e\ge1$,
+$a(1)=1$. Then
+\[
+B_p(x) = 1 + \sum_{e\ge1} \frac{p^{2-2e}}{(p-1)^2}\,x^e
+= 1 + \frac{p^2}{(p-1)^2}\sum_{e\ge1}\Big(\frac{x}{p^2}\Big)^e
+= 1 + \frac{p^2}{(p-1)^2}\cdot\frac{x/p^2}{1-x/p^2}
+= 1 + \frac{x}{(p-1)^2}\cdot\frac{1}{1-x/p^2},
+\]
+valid for $|x|<p^2$ (i.e. $\Re(s)$ large enough, uniformly boundable since we
+only need this as a formal identity of rational functions). Clearing
+denominators,
+\[
+B_p(x) = \frac{(p-1)^2(p^2-x) + xp^2}{(p-1)^2(p^2-x)}
+= \frac{(p-1)^2p^2 + x\big[p^2-(p-1)^2\big]}{(p-1)^2(p^2-x)}
+= \frac{(p-1)^2p^2 + (2p-1)x}{(p-1)^2(p^2-x)},
+\]
+using $p^2-(p-1)^2 = 2p-1$.
+\end{proof}
+
+\subsection{Normalized form and first observations}
+
+Dividing numerator and denominator by $(p-1)^2p^2$ to put $B_p(0)=1$:
+\begin{equation}
+\label{eq:phi-inv-sq-normalized}
+B_p(x) = \frac{1+\dfrac{2p-1}{(p-1)^2p^2}\,x}{1-\dfrac{1}{p^2}x}.
+\end{equation}
+
+\begin{remark}[Flag: does not obviously match the algorithm's assumed template]
+The denominator factor $1-p^{-2}x = 1-p^{-2-s}$ is exactly of the form
+$1-p^{l-us}$ with $(l,u)=(-2,1)$, so by \eqref{eq:euler-minus} it contributes
+$\zeta(s+2)^{-1}$ to $\zD$ directly — a clean, finite piece.
+
+The numerator, however, has coefficient $\dfrac{2p-1}{(p-1)^2p^2}$, which is
+\emph{not} a Laurent monomial in $p$ (it is a proper rational function of $p$
+with a pole at $p=1$, which never occurs among primes but is still not of the
+$p^{c}$ shape our extraction step pattern-matches on term by term). This means:
+\begin{itemize}
+\item Either the extraction must proceed by first expanding this coefficient
+in a partial-fraction / asymptotic series in $1/p$ (i.e. $\frac{2p-1}{(p-1)^2p^2}
+= \sum_k c_k p^{-k}$ for appropriate rational $c_k$, valid for the range of $p$
+that matters, and each such term then seeds its own zeta factor at the
+appropriate order) — effectively the numerator itself is not degree-1 in $x$
+once expanded this way, it is a full power series in $x$ whose $p$-dependence
+at each order in $x$ must independently be decomposed into $p$-power monomials;
+\item or there is no finite factorization and the extraction is a genuinely
+infinite, non-terminating recursion whose $\gamma_i$ pattern we would need to
+conjecture numerically (as Mathar did for $\varphi^2(n)$) rather than derive
+in closed form.
+\end{itemize}
+This needs to be checked computationally (run the term-by-term extractor to
+enough orders and look for a recognizable exponent sequence, ideally cross-checked
+against OEIS the way Mathar does) before we assert either alternative. Flagging
+this explicitly rather than asserting a closed form we have not verified.
+\end{remark}
+
+\section{Next steps}
+
+\begin{enumerate}
+\item Reimplement the extraction algorithm in Haskell on exact \texttt{Rational}
+coefficients, first validated against Mathar's $\varphi^2(n)$ example
+\eqref{eq:mathar-phi2} (16 known terms) and against the trivially-finite Jordan
+totient case $J_k(n) \mapsto \zeta(s-k)/\zeta(s)$ (his eq.~(3.87)) as a
+terminating sanity check.
+\item Once validated, run it on Proposition~\ref{prop:bell-1overphi2}'s $B_p(x)$
+for $1/\varphi(n)^2$ to sufficient order in $x$ and extract/conjecture the
+$(l_i,u_i,\gamma_i)$ sequence.
+\item Search OEIS for the resulting exponent sequence, the way Mathar
+cross-references A-numbers throughout — this is a cheap and effective
+correctness check.
+\item Only after (2)--(3) succeed, write the closed-form (or asymptotic infinite
+product) statement for $1/\varphi(n)^2$ as a theorem with proof, in the same
+style as Proposition~\ref{prop:bell-1overphi2}.
+\end{enumerate}
+
+\begin{thebibliography}{9}
+\bibitem{Mathar2011}
+R.~J.~Mathar, \emph{Survey of Dirichlet Series of Multiplicative Arithmetic
+Functions}, arXiv:1106.4038 [math.NT].
+\end{thebibliography}
+
+\end{document}
