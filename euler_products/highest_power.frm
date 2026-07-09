@@ -5,7 +5,7 @@
 * Global FORM helpers live in src/frm; pull them in by relative path.
 * (Run this file from euler_products/ so the relative path resolves,
 *  or invoke form with  -p ../src/frm  and drop the #include line.)
-#include- ../src/frm/HighestPower.prc
+#include ../src/frm/HighestPower.prc
 
 Off Statistics;
 
