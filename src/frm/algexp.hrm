@@ -1,14 +1,14 @@
 #-
 *===========================================================================
-*   algexp.h  --  FORM helper library for algebraic-explorations
+*   algexp.hrm  --  FORM helper library for algebraic-explorations
 *
 *   A single includable header collecting reusable #procedures.  Pull it in
 *   once near the top of a driver:
 *
-*       #include- ../src/frm/algexp.h
+*       #include- ../src/frm/algexp.hrm
 *
 *   or put src/frm on FORM's search path (form -p <repo>/src/frm, or
-*   FORMPATH) and use #include- algexp.h .
+*   FORMPATH) and use #include- algexp.hrm .
 *
 *   The whole file is wrapped in an include guard so pulling it in more than
 *   once is harmless.  Scratch declarations shared by the helpers live at the
@@ -18,10 +18,11 @@
 #ifndef `ALGEXPH'
 #define ALGEXPH "1"
 
-*   Shared scratch symbol used by the power helpers below.  Renaming the
-*   inspected symbol onto this collision-safe name keeps other symbols in the
-*   expression from perturbing the count.
+*   Shared scratch symbols used by the helpers below.  Renaming the inspected
+*   symbol onto a collision-safe name keeps other symbols in the expression from
+*   perturbing the count (xPLtmp for the power helpers, xCOAT for CoeffAt).
 Symbol xPLtmp;
+Symbol xCOAT;
 
 *---------------------------------------------------------------------------
 #procedure HighestPower(EXPR,SYMB,POW)
@@ -106,6 +107,47 @@ Symbol xPLtmp;
     .sort
 
     Drop PLLOCAL;
+    .sort
+
+    Unhide;
+    .sort
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure CoeffAt(EXPR,SYMB,POW,COEF)
+*
+*   Coefficient of `SYMB'^`POW' in `EXPR', written into the $-variable `COEF'.
+*
+*   Arguments (all passed by name, FORM-style):
+*       EXPR  - a $-variable holding the expression to inspect, e.g. $poly
+*       SYMB  - the symbol whose coefficient you want, e.g. x
+*       POW   - the power to pick out (a number or $-variable), e.g. $ord
+*       COEF  - the $-variable that receives the result, e.g. $c
+*
+*   Usage:
+*       Symbols x, ... ;
+*       Local dummy = 1;           * keep one active expression around
+*       .sort
+*       $poly = 3 + 4*x^2 - 5*x^2;
+*       .sort
+*       #call CoeffAt($poly,x,2,$c)
+*       #message coefficient = `$c'   * -> -1
+*
+*   Returns 0 when `SYMB'^`POW' does not occur.  Renames `SYMB' onto the scratch
+*   symbol xCOAT, discards every term whose xCOAT-degree is not `POW', then sets
+*   xCOAT = 1 so what remains is exactly the coefficient.
+
+    Hide;
+    .sort
+    Local COATLOCAL = replace_(`SYMB',xCOAT)*(`EXPR');
+    if ( count(xCOAT,1) != `POW' ) discard;
+    id xCOAT = 1;
+    .sort
+
+    `COEF' = COATLOCAL;
+    .sort
+
+    Drop COATLOCAL;
     .sort
 
     Unhide;

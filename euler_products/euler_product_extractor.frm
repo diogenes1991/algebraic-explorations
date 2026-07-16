@@ -1,53 +1,47 @@
 #-
 #include ../src/frm/algexp.hrm
 
-#procedure CoeffAt(EXPR,SYMB,POW,COEF)
-
-    .sort
-    #ifndef `COAT'
-        #define COAT "1"
-        Symbol xCOAT,xCOATH;
-    #endif
-
-    Local COATLOCAL = replace_(`SYMB',xCOAT)*`EXPR';
-    id,only, xCOAT^`POW' = xCOATH^`POW';
-    id xCOAT = 0;
-    id xCOATH = 1;
-    .sort
-
-    `COEF' = COATLOCAL;
-    .sort
-
-    Drop COATLOCAL;
-    .sort
-
-#endprocedure
-
 Off Statistics;
 
 Symbol q;
-Symbol qH;
+CFunction Zeta;
 
+* We work with lots of dollar variables,
+* so we need to have a (dummy) active expression
 Local dummy = 1;
 
-$Num1 = 1 - q + q^3;
-$Den1 = 1 - q - q^2 + q^3 + 4*q^5;
-$Diff1 = $Num1 - $Den1;
+* Numerator and denominator of for
+* the sample function 1 / (n*phi(n))
+* (where phi is the Euler totient function)
+$Num = 1 - q + q^3;
+$Den = 1 - q - q^2 + q^3;
+$Acc = 1;
 .sort
 
-#call LowestPower($Diff1,q,$LPow1)
-#call HighestPower($Diff1,q,$HPow1)
+*   Parenthesis here are necessary, otherwise the
+*   operators only hit the closest term
+*   ($-sign replacements are resolved as text replacements)
+#do i=1,9
+    $Diff`i' = `$Num' - (`$Den');
+    .sort
 
-#message Diff1 lowest power is `$LPow1'
-#message Diff1 highest power is `$HPow1'
-.sort
+    #call LowestPower($Diff`i',q,$Pow)
+    #call CoeffAt($Diff`i',q,$Pow,$Coeff)
 
-#call CoeffAt($Diff1,q,$LPow1,$Coef1)
-#call CoeffAt($Diff1,q,$HPow1,$Coef2)
-#message Coefficient at lowest power is `$Coef1'
-#message Coefficient at highest power is `$Coef2'
+    #if (`$Coeff' > 0)
+        $Num = (`$Num') * (1 - q^`$Pow')^`$Coeff';
+        $Acc = (`$Acc') * Zeta(`$Pow')^`$Coeff';
+        .sort
+    #else
+        $Num = (`$Num') * (1 + q^`$Pow')^{-`$Coeff'};
+        $Acc = (`$Acc') * (Zeta({2*`$Pow'})/Zeta(`$Pow'))^{-`$Coeff'};
+        .sort
+    #endif
 
-.sort
+#enddo
+
+Local Accumulator = `$Acc';
+print;
 
 .sort
 .end
