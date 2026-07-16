@@ -8,7 +8,7 @@ several languages.
 
 ```
 src/                  shared, reusable code organized by language
-  frm/                FORM helper procedures (.prc) — globally reusable
+  frm/                FORM helper library (algexp.hrm) — globally reusable #procedures
   cpp/ hs/ py/ m/     C++, Haskell, Python, Mathematica helpers
 euler_products/       exploration: Euler φ / Euler-product extraction
                       (FORM drivers, C++/Haskell extractors, LaTeX in tex/)
@@ -17,17 +17,20 @@ euler_products/       exploration: Euler φ / Euler-product extraction
 
 ## FORM conventions
 
-- **Reusable procedures live in `src/frm/`** as `Name.prc`, each wrapping a single
-  `#procedure Name(...) ... #endprocedure`.
-- **Include from a driver** by relative path: `#include- ../src/frm/Name.prc`
+- **Reusable procedures live in one library, `src/frm/algexp.hrm`**, each a
+  `#procedure Name(...) ... #endprocedure`. New helpers get appended here rather
+  than into their own `.prc` file.
+- **Include from a driver** by relative path: `#include- ../src/frm/algexp.hrm`
   (the trailing `-` mutes the listing; the path resolves from FORM's working
-  directory, so run drivers from their own folder).
+  directory, so run drivers from their own folder). Pull it in once near the top,
+  then `#call Name(...)` as needed.
 - **Or use a search path** — `form -p <repo>/src/frm driver.frm`, or
-  `export FORMPATH=<repo>/src/frm` — then just `#call Name(...)` and FORM
-  auto-loads the `.prc` (no `#include` needed). Preferred as `src/frm/` grows.
-- **Helper hygiene:** collision-safe internal names (e.g. `xHPtmp`, `$HPmax`,
-  `HPLOCAL`) and an `#ifndef` guard around one-time `Symbol` declarations, so
-  repeated `#call`s don't re-declare. See `src/frm/HighestPower.prc` for the pattern.
+  `export FORMPATH=<repo>/src/frm` — then `#include- algexp.hrm` needs no relative path.
+- **Helper hygiene:** the whole file is wrapped in one `#ifndef `ALGEXPH'` include
+  guard, with shared scratch declarations (e.g. `Symbol xPLtmp;`) at the top so
+  the header can be included repeatedly and each `#procedure` `#call`-ed without
+  re-declaring anything. Use collision-safe internal names (`xPLtmp`, `$PLmax`,
+  `$PLmin`, `PLLOCAL`). See `src/frm/algexp.hrm` for the pattern.
 
 ## Running
 
@@ -38,7 +41,7 @@ euler_products/       exploration: Euler φ / Euler-product extraction
 
 ## Editing
 
-- `.frm`/`.prc` syntax highlighting comes from a local VS Code extension
+- `.frm`/`.hrm` (FORM) syntax highlighting comes from a local VS Code extension
   (`form-lang`); edit its grammar under `syntaxes/form.tmLanguage.json`, then
   repackage/reinstall.
 
