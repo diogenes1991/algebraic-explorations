@@ -4,6 +4,22 @@ Personal repo of mathematical / algebraic explorations: Jupyter notebooks, symbo
 computation with [FORM](https://github.com/vermaseren/form), and supporting code in
 several languages.
 
+## Working modes ("hats")
+
+Work happens under one of two hats; **the current hat is stated at the end of this
+section.** Stay within the active hat unless told to switch.
+
+- **Writeup** — documentation only. Touch only `.tex`, `.md`, and comments in code;
+  do not change code behavior. Notation conventions for the math notes:
+  - use `q = p^{-1}` everywhere (never `x = p^{-s}`), so `s` stays explicit in the
+    exponents (`q^s`, `q^{s-1}`, `q^{us-l}`) — the exponent on `q` is the ζ-argument;
+  - show the input as the full summand with `s` visible (`φ(n)/n^s ↦ ζ(s-1)/ζ(s)`),
+    never hiding `s` (not `φ(n) ↦ …`).
+- **Develop** — algorithms and debugging. Write and modify code (FORM, Haskell,
+  Python), run it, verify.
+
+**Current hat: Writeup.**
+
 ## Layout
 
 ```
