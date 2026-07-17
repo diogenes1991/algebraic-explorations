@@ -21,7 +21,7 @@ $Acc = 1;
 *   Parenthesis here are necessary, otherwise the
 *   operators only hit the closest term
 *   ($-sign replacements are resolved as text replacements)
-#do i=1,9
+#do i=1,20
     $Diff`i' = `$Num' - (`$Den');
     .sort
 

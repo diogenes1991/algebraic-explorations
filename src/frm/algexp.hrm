@@ -154,4 +154,87 @@ Symbol xCOAT;
     .sort
 #endprocedure
 
+*---------------------------------------------------------------------------
+#procedure LogExpand(EXPR,SYMB,ORD,OUT)
+*
+*   Power-series logarithm of `EXPR' in `SYMB', truncated to order `ORD',
+*   written into the $-variable `OUT'.  `EXPR' must have constant term 1.
+*
+*   Arguments (all passed by name, FORM-style):
+*       EXPR  - a $-variable holding the series to take the log of, e.g. $Num
+*       SYMB  - the series variable, e.g. q
+*       ORD   - truncation order (a number or $-variable), e.g. 12
+*       OUT   - the $-variable that receives log(`EXPR') + O(SYMB^{ORD+1})
+*
+*   Usage:
+*       Symbol q;
+*       Local dummy = 1;           * keep one active expression around
+*       .sort
+*       $Num = 1 - q + q^3;
+*       .sort
+*       #call LogExpand($Num,q,12,$LNum)
+*       #message log Num = `$LNum'
+*
+*   Method: with u = `EXPR' - 1 (so u has no constant term), sum the Mercator
+*   series  log(1+u) = sum_{m>=1} (-1)^{m-1} u^m / m .  The running power
+*   P_m = (-1)^{m-1} u^m satisfies P_1 = u, P_m = (-u) * P_{m-1}, so we just
+*   Multiply by -u each step (no explicit sign juggling) and add P_m/m.  Since u
+*   starts at order >= 1, P_m starts at order >= m, so terms past m = `ORD' cannot
+*   reach order `ORD' and the loop stops there.  Everything is truncated to `ORD'
+*   after each multiply.
+*
+*   FORM subtlety: accumulating a MULTI-TERM expression into a $-variable
+*   (`$s = $s + EXPR') executes once per term of the active expression, which
+*   double-counts.  So we keep a one-term vehicle LEONE = 1 active during the
+*   accumulation (with the running power LEPOW hidden but still referenceable),
+*   and flip Hide the other way while Multiply advances LEPOW -- that keeps
+*   Multiply off LEONE and keeps each accumulation running exactly once.
+
+    $LEu   = (`EXPR') - 1;
+    $LEmu  = - $LEu;
+    $LEsum = 0;
+    .sort
+
+    Hide;
+    .sort
+    Local LEONE = 1;                          * one-term accumulation vehicle
+    Local LEPOW = $LEu;                        * running power P_1 = u
+    .sort
+
+    Hide LEONE;                               * only LEPOW active: safe to truncate
+    .sort
+    if ( count(`SYMB',1) > `ORD' ) discard;   * truncate P_1
+    .sort
+
+    Hide LEPOW;                               * only LEONE (1 term) active: safe to accumulate
+    Unhide LEONE;
+    .sort
+    $LEsum = $LEsum + LEPOW;                   * + P_1 / 1  (runs exactly once)
+    .sort
+
+    #do LEm = 2, `ORD'
+        Hide LEONE;                           * advance the power: only LEPOW active
+        Unhide LEPOW;
+        .sort
+        Multiply $LEmu;                       * P_m = (-u) * P_{m-1}
+        if ( count(`SYMB',1) > `ORD' ) discard;
+        .sort
+
+        Hide LEPOW;                           * accumulate: only LEONE active
+        Unhide LEONE;
+        .sort
+        $LEsum = $LEsum + LEPOW/`LEm';        * + P_m / m  (runs exactly once)
+        .sort
+    #enddo
+
+    `OUT' = $LEsum;
+    .sort
+
+    Unhide;                                   * restore dummy + scratch, then drop scratch
+    .sort
+    Drop LEONE;
+    Drop LEPOW;
+    .sort
+#endprocedure
+
 #endif
