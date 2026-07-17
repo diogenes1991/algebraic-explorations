@@ -11,10 +11,10 @@
 \newtheorem{conjecture}[theorem]{Conjecture}
 
 \newcommand{\zD}{\zeta_D}
-\newcommand{\PE}{\mathrm{PE}}
+\newcommand{\zbar}{\bar\zeta}
 
-\title{Term-by-Term Extraction of Euler Products into\\ Ratios of Riemann Zeta Values\\
-\large Working notes, with Mathar (arXiv:1106.4038) as prior art}
+\title{Turning Euler products into ratios of zeta values\\
+\large Working notes --- with Mathar (arXiv:1106.4038) as prior art}
 \author{}
 \date{\today}
 
@@ -22,21 +22,75 @@
 \maketitle
 
 \begin{abstract}
-For a multiplicative arithmetic function $a(n)$ with local (Bell series) factor
-$B_p(x) = \sum_{e\ge0} a(p^e)x^e$ at $x=p^{-s}$, we consider the problem of writing
-the Euler product $\zD(s)=\prod_p B_p(p^{-s})$ as an (in general infinite) product
-of Riemann zeta values $\zeta(u_is-l_i)^{\pm\gamma_i}$. We record the exact
-statement of the underlying identity, formalize the term-by-term extraction step
-as an algorithm on exact rational functions of $x=p^{-s}$, and identify
-R.~J.~Mathar's survey \cite{Mathar2011} as an existing treatment of the same
-question, with a worked example (the Hadamard square of Euler's totient) that is
-structurally identical to our target case $1/\varphi(n)^2$. We use this to
-calibrate our own algorithm before pushing it further.
+Start with a multiplicative arithmetic function $a(n)$ and ask for a usable number
+for $\sum_n a(n)/n^s$. Multiplicativity turns the sum into an Euler product, and if
+the local factor is a rational function of $p^{-s}$ we can peel it apart, one order
+at a time, into pieces each of which is a Riemann zeta value. These notes tell that
+story: the identity that makes it work, the little greedy algorithm that does the
+peeling, when it stops (a clean closed form) versus when it does not (an honest
+infinite product), a cheap way to compute it in $\log$-space, and the running
+example $\sum_n 1/(n\varphi(n))$ together with the harder target $1/\varphi(n)^2$.
+R.~J.~Mathar's survey \cite{Mathar2011} turns out to set up exactly the same
+construction, so we use it to calibrate before pushing further.
 \end{abstract}
 
 \tableofcontents
 
-\section{Setup}
+\section{A concrete question to anchor everything}
+\label{sec:anchor}
+
+The first thing worth doing is picking a number to chase. Take
+\[
+\sum_{n\ge1}\frac{1}{n\,\varphi(n)},
+\]
+where $\varphi$ is Euler's totient. Since $n\mapsto 1/(n\varphi(n))$ is
+multiplicative, the sum factors over primes,
+\[
+\sum_{n\ge1}\frac{1}{n\varphi(n)}
+=\prod_{p}\sum_{\alpha\ge0}\frac{1}{p^{\alpha}\varphi(p^{\alpha})}
+=\prod_{p}\Big(1+\sum_{\alpha\ge1}\frac{1}{p^{2\alpha}(1-p^{-1})}\Big),
+\]
+the split in the last step being there because $\varphi(p^\alpha)=p^\alpha(1-p^{-1})$
+only holds for $\alpha\ge1$. The inner sum is geometric, and after clearing
+denominators the local factor collapses to a tidy rational function of $q:=p^{-1}$,
+\[
+\sum_{n\ge1}\frac{1}{n\varphi(n)}
+=\prod_p\frac{1-q+q^{3}}{1-q-q^{2}+q^{3}},\qquad q=p^{-1}.
+\]
+Now notice the thing that makes the whole method go: the numerator and denominator
+are \emph{almost} equal --- they differ only by the single term $q^2$. If we could
+nudge that mismatch up into higher and higher powers of $q$, the leftover would
+matter less and less, and we would be left with an approximation we can actually
+evaluate. That is the whole idea, and it works because we happen to know, in closed
+form, the product over primes of the nudging factors.
+
+\subsection{The two moves, and why they are zeta values}
+
+The moves we are allowed are ``multiply and divide by $(1\mp q^{u})$,'' and the
+reason we like them is Euler's product for $\zeta$. Writing $x=p^{-s}$,
+\begin{align}
+\zeta(s) &= \prod_p\frac{1}{1-p^{-s}}, &
+\zbar(s) &:= \frac{\zeta(2s)}{\zeta(s)} = \prod_p\frac{1}{1+p^{-s}}. \label{eq:zzbar}
+\end{align}
+So every factor of the form $\prod_p(1-p^{-s})^{\pm1}$ or $\prod_p(1+p^{-s})^{\pm1}$
+that we introduce simply accumulates a $\zeta$ or a $\zbar$. For instance,
+multiplying and dividing the $1/(n\varphi(n))$ factor by $(1+q^2)$ shifts the
+denominator to $1-q-q^4+q^5$, pushing the mismatch from order $q^2$ up to order
+$q^3$, while the $(1+q^2)$ we introduced contributes exactly a $\zbar(2)^{-1}$ to
+the product. Repeating this bookkeeping is the whole game; run it nine times and
+you already get
+\[
+\sum_{n\ge1}\frac{1}{n\varphi(n)}
+\;\approx\;
+\frac{\zeta(2)\zeta(3)\zeta(4)\zeta(5)\zeta(13)\zeta(14)\zeta(16)\zeta(18)\zeta(20)}
+     {\zeta(8)\zeta(9)\zeta(10)}
+\;=\;2.203927707\ldots
+\]
+The rest of these notes is about making this precise, deciding when it terminates,
+and computing it without drowning in algebra.
+
+\section{The general setup}
+\label{sec:setup}
 
 \begin{definition}[Dirichlet series]
 For an arithmetic function $a:\mathbb{Z}_{\ge1}\to\mathbb{C}$,
@@ -45,146 +99,369 @@ For an arithmetic function $a:\mathbb{Z}_{\ge1}\to\mathbb{C}$,
 \]
 \end{definition}
 
-If $a$ is multiplicative, $\zD$ factors over primes into local Bell series
+When $a$ is multiplicative, $\zD$ factors over primes into local (Bell) series
 \[
 \zD(s) = \prod_p B_p(p^{-s}), \qquad B_p(x) \equiv \sum_{e\ge0} a(p^e)\, x^e .
 \]
-For all functions of interest here $B_p(x)$ is a \emph{rational} function of
-$x$ with coefficients that are (typically polynomial or rational) functions of
-$p$ — this rationality, not multiplicativity per se, is what makes the zeta
-extraction go through, since it lets us write $B_p(x) = \mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$
-with $\mathrm{NUM}_p,\mathrm{DEN}_p \in \mathbb{Q}(p)[x]$.
+For every function we care about, $B_p(x)$ is a \emph{rational} function of $x$
+whose coefficients are (polynomial or rational) functions of $p$. That rationality
+--- more than multiplicativity itself --- is what lets the extraction go through: we
+can always write $B_p(x)=\mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$ with
+$\mathrm{NUM}_p,\mathrm{DEN}_p\in\mathbb{Q}(p)[x]$, normalized so that $B_p(0)=1$.
 
-\subsection{The target identity}
+\subsection{The identity that makes it work}
 
-Euler's product formula gives, for each fixed pair $(l,u)\in\mathbb{Z}\times\mathbb{Z}_{\ge1}$
-and $\gamma\in\mathbb{Z}$,
+The two moves of \S\ref{sec:anchor} generalize to arbitrary shifts. For each fixed
+pair $(l,u)\in\mathbb{Z}\times\mathbb{Z}_{\ge1}$ and exponent $\gamma\in\mathbb{Z}$,
 \begin{align}
 \prod_p (1 - p^{\,l-us})^{\gamma} &= \zeta(us-l)^{-\gamma}, \label{eq:euler-minus}\\
 \prod_p (1 + p^{\,l-us})^{\gamma} &= \frac{\zeta(us-l)^{\gamma}}{\zeta(2us-2l)^{\gamma}}. \label{eq:euler-plus}
 \end{align}
-Equation \eqref{eq:euler-minus} is immediate from the Euler product of $\zeta$.
-Equation \eqref{eq:euler-plus} follows by writing $1+y = (1-y^2)/(1-y)$ with
-$y=p^{l-us}$ and applying \eqref{eq:euler-minus} twice.
+Equation~\eqref{eq:euler-minus} is just \eqref{eq:zzbar} for $\zeta$ with the
+argument shifted; \eqref{eq:euler-plus} follows by writing $1+y=(1-y^2)/(1-y)$ with
+$y=p^{l-us}$ and applying \eqref{eq:euler-minus} twice. (The special case
+$l=0,u=1$ is precisely $\zeta$ and $\zbar$ from before.)
 
-The extraction problem is: given $B_p(x) = \mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$,
+So the extraction problem is this: given $B_p(x)=\mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$,
 find a (possibly infinite) factorization
 \begin{equation}
 \label{eq:master-factorization}
-B_p(x) = \prod_{i\ge1} (1 - S_i\, p^{\,l_i - u_i s})^{\gamma_i}, \qquad S_i\in\{+1,-1\},\ l_i,u_i,\gamma_i\in\mathbb{Z},\ u_i\ge1,
+B_p(x) = \prod_{i\ge1} (1 - S_i\, p^{\,l_i - u_i s})^{\gamma_i}, \qquad
+S_i\in\{+1,-1\},\ l_i,u_i,\gamma_i\in\mathbb{Z},\ u_i\ge1,
 \end{equation}
-ordered by increasing $u_i$ (and, for ties, decreasing $l_i$) so that the
-factors are listed in order of decreasingly restrictive abscissa of convergence.
-Substituting \eqref{eq:euler-minus}--\eqref{eq:euler-plus} termwise then gives
-$\zD(s)$ as a product/ratio of zeta values.
+ordered by increasing $u_i$ (and, for ties, decreasing $l_i$). Feeding each factor
+through \eqref{eq:euler-minus}--\eqref{eq:euler-plus} then reads off $\zD(s)$ as a
+product/ratio of zeta values.
 
-\subsection{The extraction algorithm (informal statement)}
+\subsection{The algorithm, told as a story}
+\label{sec:algo}
 
-Our Mathematica prototype (\texttt{Extractor}/\texttt{GetCharsTerm2}/\texttt{Handler})
-implements \eqref{eq:master-factorization} by:
+The peeling is greedy and almost embarrassingly simple:
 \begin{enumerate}
-\item Expand $\mathrm{NUM}_p(x)$ and $\mathrm{DEN}_p(x)$ as power series in $x$ to some working order $N$.
-\item Identify the lowest-order term at which $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$
-(as formal series, normalized to constant term $1$) disagree; this fixes a
-candidate binomial factor $(1-Sp^{l-us})^{\gamma}$ whose own series expansion
-cancels the discrepancy to that order.
-\item Divide it out (equivalently, multiply/divide $\mathrm{NUM}_p/\mathrm{DEN}_p$ by
-$(1-Sp^{l-us})^{-\gamma}$) and recurse on the residual series.
-\item Terminate if the residual becomes exactly $1$ (finite closed form); otherwise
-continue and only conjecture the pattern in $(l_i,u_i,\gamma_i)$ from a run of
-consecutive terms.
+\item Expand $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$ as power series in $x$ (both with
+constant term $1$) up to a working order $N$.
+\item Find the lowest order at which they still disagree. The size of that
+disagreement pins down exactly one binomial factor $(1-S\,p^{l-us})^{\gamma}$ whose
+own expansion cancels the discrepancy at that order.
+\item Fold that factor in (multiply it into the numerator, record its zeta value)
+and go back to step 2 on the new residual.
+\item If the residual ever becomes exactly $1$, stop --- you have a finite closed
+form. Otherwise keep going; the exponents $(l_i,u_i,\gamma_i)$ form a sequence you
+try to recognize.
 \end{enumerate}
-This is a discretized, order-by-order relative of two established procedures:
+Each pass raises the order of agreement by at least one, so as a formal power series
+this always converges; the only question is whether it ever \emph{halts}
+(\S\ref{sec:termination}).
 
-\begin{itemize}
-\item \textbf{Selberg--Delange.} Writing $F(s)=\zeta(s)^{\rho}G(s)$ with $G$
-holomorphic and non-vanishing near $s=1$, only finitely many derivatives of
-$G$ at $s=1$ are needed for the asymptotic count of $\sum_{n\le x}a(n)$. Our
-procedure is more ambitious: we attempt to represent $G(s)$ \emph{itself} as an
-infinite product of zeta values, which is a much stronger (and not always
-achievable in closed form) statement.
-\item \textbf{Plethystic exponential/logarithm} (Feng--Hanany--He and related
-physics literature). Peeling off the next-order term of a generating function
-and recursing is exactly the plethystic logarithm's algorithm; termination
-occurs in the same ``nice'' (free / totally multiplicative generator) cases and
-fails to terminate in general.
-\end{itemize}
+Two established procedures are hiding in here. \textbf{Selberg--Delange} writes
+$F(s)=\zeta(s)^{\rho}G(s)$ with $G$ holomorphic and non-vanishing near $s=1$ and
+needs only finitely many derivatives of $G$; we are being greedier, asking to
+represent $G$ \emph{itself} as an infinite product of zeta values. And peeling off
+the next-order term and recursing is exactly the \textbf{plethystic logarithm} of
+the physics literature (Feng--Hanany--He); it terminates in the same ``nice'' cases
+and runs forever in general.
 
-\section{Mathar's survey: the same construction, independently arrived at}
+\section{Mathar got here first}
 
-R.~J.~Mathar's survey \emph{Survey of Dirichlet Series of Multiplicative
-Arithmetic Functions} (arXiv:1106.4038, published version cross-checked here)
-\cite{Mathar2011} sets up \emph{precisely} the identity of
-\S1.1 above, in his eq.~(1.5)--(1.7). Quoting the structure (paraphrased, our
-numbering matches his where noted):
+R.~J.~Mathar's \emph{Survey of Dirichlet Series of Multiplicative Arithmetic
+Functions} \cite{Mathar2011} sets up \emph{precisely} the identity of
+\S\ref{sec:setup} (his eq.~(1.5)--(1.7)): the same infinite-product form
+\eqref{eq:master-factorization}, the same ordering convention (smallest $u_i$ first,
+ties broken by largest $l_i$), and the same $\zeta/\zbar$ substitution. He is also
+explicit that truncating the product is a numerical tool for $\zD(s)$, and that in
+the nice cases the prime product collapses to a finite ratio of cyclotomic
+polynomials in $p^{-s}$ --- hence a finite product of zeta values.
 
-\begin{itemize}
-\item His eq.~(1.5)--(1.6): the Bell series is written as an infinite product
+This does not make the project redundant. Mathar's paper is a table of results with
+sketched derivations, not a general algorithm with a reusable implementation, and he
+never touches the plethystic / Selberg--Delange framing. But it is exactly the right
+thing to (a) validate the extractor against and (b) cite as prior art.
+
+\subsection{A worked check: the Hadamard square $\varphi^2(n)$}
+
+Mathar's \S3.13.1 works the case most useful to us as a test. The totient has master
+equation $\varphi(p^e)=(p-1)p^{e-1}$ ($e>0$) and the finite (terminating) Bell
+series $\varphi\mapsto\zeta(s-1)/\zeta(s)$. Squaring $\varphi$ pointwise (a Hadamard
+square, \emph{not} Dirichlet self-convolution) gives $a(p^e)=(p-1)^2p^{2e-2}$ and
 \[
-\zD(s) = \prod_p \prod_{i=1}^{\infty} (1-S_i p^{\,l_i-u_is})^{\gamma_i},
+B_p(x)=\frac{1-(2p-1)x}{1-p^2x},\qquad x=p^{-s}\quad\text{(his eq.~(3.78))}.
 \]
-with the ordering convention: smallest $u_i$ first, and for ties, largest
-$l_i$ first — this is verbatim our ordering convention above, so there is no
-ambiguity that this is the same object.
-\item His eq.~(1.7) is exactly our \eqref{eq:euler-minus}--\eqref{eq:euler-plus}.
-\item He is explicit that truncating this product is a numerical evaluation
-tool for $\zD(s)$, and that in the ``nice'' cases the product over $p$ is a
-\emph{finite} product/ratio of cyclotomic polynomials in $p^{-s}$, which then
-becomes a finite product of zeta values; in the general case the expansion is
-genuinely infinite.
-\end{itemize}
-
-So: Mathar's survey is not merely adjacent work, it is (as far as the general
-framework goes) the same construction, published in 2011/2012. This does not
-make our project redundant — his paper is a table of results with sketched
-derivations, not a general algorithm with a reusable implementation, and he does
-not treat the plethystic/Selberg--Delange framing at all — but it is the correct
-reference point to (a) validate our extraction algorithm against, and (b) cite
-as prior art.
-
-\subsection{Worked example that matches our target: $\varphi^2(n)$}
-
-Mathar's \S3.13.1 (his eq.~(3.75)--(3.79)) works the case most structurally
-relevant to us. Euler's totient has master equation
-\[
-\varphi(p^e) = (p-1)p^{e-1}, \quad e>0,
-\]
-Bell series $\varphi(n)\mapsto \zeta(s-1)/\zeta(s)$ (his eq.~(3.76), a finite
-closed form — the ``nice''/terminating case). Squaring the master equation
-pointwise (Hadamard square, \emph{not} Dirichlet self-convolution) gives
-\[
-a(p^e) = (p-1)^2 p^{2e-2}, \qquad B_p(x) = 1+\sum_{e\ge1}(p-1)^2p^{2e-2}x^e
-= \frac{1-2p^{1-s}+p^{-s}}{1-p^{2-s}}
-= \frac{1-(2p-1)x}{1-p^2x}, \quad x=p^{-s}.
-\]
-This is his eq.~(3.78). The numerator is \emph{not} a perfect binomial power in
-$x$ alone (the coefficient $2p-1$ is not a pure power of $p$), so the extraction
-does not terminate at one factor; Mathar reports the result as an infinite
-product (his eq.~(3.79)):
+The numerator is \emph{not} a clean binomial power in $x$ --- the coefficient $2p-1$
+is not a pure power of $p$ --- so the extraction cannot stop at one factor, and
+Mathar reports an infinite product (his eq.~(3.79)):
 \begin{align}
 \varphi^2(n) &\mapsto \zeta(s-2)\prod_p
 (1-p^{1-s})^2(1+p^{-s})^{-1}(1-p^{2-2s})^{-1}(1+p^{1-2s})^{-2}\notag\\
 &\quad\times(1-p^{3-3s})^{-2}(1+p^{2-3s})^{-4}(1-p^{1-3s})^{-2}
 (1-p^{4-4s})^{-3}(1+p^{3-4s})^{-8}(1-p^{2-4s})^{-5}\notag\\
 &\quad\times(1+p^{1-4s})^{-2}(1-p^{5-5s})^{-6}(1+p^{4-5s})^{-16}(1-p^{3-5s})^{-16}
-(1+p^{2-5s})^{-8}(1-p^{1-5s})^{-2}\cdots,\ s>3. \label{eq:mathar-phi2}
+(1+p^{2-5s})^{-8}(1-p^{1-5s})^{-2}\cdots \label{eq:mathar-phi2}
 \end{align}
 The exponents $2,1,1,2,2,4,2,3,8,5,2,6,16,16,8,2,\dots$ are exactly the sort of
-sequence our \texttt{Handler} step is meant to conjecture and (ideally) prove
-closed-form recursions for; this gives us a fully independent, already-published
-check case with 16 confirmed terms to validate our Haskell reimplementation
-against before trusting it on new functions.
+sequence our extractor should reproduce. With 16 published terms, this is a fully
+independent check to run before trusting the code on anything new.
 
 \begin{remark}
-Note $\varphi^2(n)$ (pointwise square) is \emph{not} our target $1/\varphi(n)^2$
-(pointwise reciprocal square). The two are related only in that both fail to be
-expressible via the algebra of Dirichlet convolution applied to $\zeta$-ratios
-directly (unlike, e.g., $\varphi(n)\star 1 = n$, which is transparent from
-\eqref{eq:master-factorization} with a single finite factor). We work out our
-own case in \S3.
+$\varphi^2(n)$ (pointwise square) is \emph{not} our eventual target
+$1/\varphi(n)^2$ (pointwise reciprocal square); they are related only in that both
+resist a clean closed form. We set up our own case in \S\ref{sec:target}.
 \end{remark}
 
-\section{Setting up $1/\varphi(n)^2$}
+\section{When does it stop?}
+\label{sec:termination}
+
+The extraction always converges as a formal series, so the interesting question is
+when it \emph{halts} --- when the residual hits exactly $1$ after finitely many
+factors. When it does, the output is a finite product
+\[
+B_p(x) = \prod_{i=1}^{M} (1 - S_i\, p^{\,l_i - u_i s})^{\gamma_i},
+\]
+so ``it terminates'' is almost tautologically ``$B_p$ \emph{is} such a finite
+product.'' The useful content is recognizing that directly from
+$\mathrm{NUM}_p,\mathrm{DEN}_p$, without running anything.
+
+\begin{definition}[Admissible binomial]
+With $x=p^{-s}$, an \emph{admissible binomial} is a factor $1-S\,p^{\,l}x^{u}$ with
+$S\in\{\pm1\}$, $l\in\mathbb Z$, $u\ge1$. Its zeros are
+$x=(Sp^{-l})^{1/u}\zeta_u^{\,j}$ ($0\le j<u$, $\zeta_u=e^{2\pi i/u}$): a root of
+unity times $p^{-l/u}$.
+\end{definition}
+
+\begin{theorem}[Termination criterion]
+\label{thm:termination}
+Normalize $B_p(x)=\mathrm{NUM}_p(x)/\mathrm{DEN}_p(x)$ so $B_p(0)=1$ and view it as a
+rational function of $x$ over $\mathbb{Q}(p)$. The extraction terminates if and only
+if both $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$ factor into admissible binomials ---
+equivalently, iff every zero of $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$ is of the form
+$(\text{root of unity})\times p^{\,r}$, $r\in\mathbb{Q}$.
+\end{theorem}
+
+\begin{proof}[Sketch]
+\emph{Sufficiency.} If $B_p$ is a finite product of admissible binomials, order them
+by increasing $u_i$ (ties by decreasing $l_i$). The leading term of the smallest
+surviving factor is exactly the lowest-order discrepancy the greedy step sees, so
+each pass cancels precisely one factor and recurses on a strictly shorter product,
+halting after $M$ passes. \emph{Necessity.} If the algorithm halts, the emitted
+factorization is finite by definition, and reading it factor by factor is the root
+statement.
+\end{proof}
+
+\subsection{The numeric (single-variable) case}
+
+When the arguments carry no power of $p$ --- all $l_i=0$, which is the situation of
+$\sum_n 1/(n\varphi(n))$, where $B_p$ is a rational function of $q:=p^{-1}$ with
+$p$-free coefficients --- the admissible binomials are just $1-x^u$ and
+$1+x^u=(1-x^{2u})/(1-x^u)$. Since $1-x^n=\prod_{d\mid n}\Phi_d(x)$ with $\Phi_d$ the
+$d$-th cyclotomic polynomial, and
+\[
+\prod_n (1-x^n)^{m_n}=\prod_d \Phi_d(x)^{e_d},\qquad e_d=\sum_{n:\,d\mid n} m_n,
+\]
+is a bijection between finitely supported integer sequences (M\"obius inversion on
+divisibility, $m_n=\sum_{n\mid k}\mu(k/n)e_k$), Theorem~\ref{thm:termination}
+specializes cleanly:
+
+\begin{proposition}
+\label{prop:cyclotomic}
+For $B_p(x)$ with $p$-free coefficients and $B_p(0)=1$, the extraction terminates
+iff $\mathrm{NUM}_p$ and $\mathrm{DEN}_p$ are products of cyclotomic polynomials ---
+equivalently iff every zero and pole of $B_p$ is a root of unity --- and the value
+is then the finite monomial $\prod_p B_p=\prod_n\zeta(n)^{-m_n}$.
+\end{proposition}
+
+\subsection{Where it terminates (and it usually does)}
+
+Termination is in fact generic among the classical multiplicative functions: any
+Bell series that is a ratio of admissible binomials halts, and Mathar's totient
+$\varphi\mapsto\zeta(s-1)/\zeta(s)$ is just the prototype. All of the following stop
+in one or two factors ($x=p^{-s}$):
+
+\begin{center}
+\renewcommand{\arraystretch}{1.35}
+\begin{tabular}{lll}
+\hline
+$a(n)$ & $B_p(x)$ & $\zD(s)$ \\
+\hline
+$1$ & $(1-x)^{-1}$ & $\zeta(s)$ \\
+$n^k$ \ (=\,$\mathrm{Id}_k$) & $(1-p^kx)^{-1}$ & $\zeta(s-k)$ \\
+$\mu(n)$ & $1-x$ & $1/\zeta(s)$ \\
+$\lambda(n)$ \ (Liouville) & $(1+x)^{-1}$ & $\zeta(2s)/\zeta(s)$ \\
+$\mu^2(n)$ \ (squarefree ind.) & $1+x$ & $\zeta(s)/\zeta(2s)$ \\
+$\varphi(n)$ & $\dfrac{1-x}{1-px}$ & $\zeta(s-1)/\zeta(s)$ \quad[Mathar (3.76)]\\
+$J_k(n)$ \ (Jordan) & $\dfrac{1-x}{1-p^kx}$ & $\zeta(s-k)/\zeta(s)$ \quad[Mathar (3.87)]\\
+$\sigma_k(n)$ & $\big[(1-x)(1-p^kx)\big]^{-1}$ & $\zeta(s)\,\zeta(s-k)$ \\
+$d(n)=\sigma_0(n)$ & $(1-x)^{-2}$ & $\zeta(s)^2$ \\
+$2^{\omega(n)}$ & $\dfrac{1+x}{1-x}$ & $\zeta(s)^2/\zeta(2s)$ \\
+\hline
+\end{tabular}
+\end{center}
+
+The last row is a clean illustration of the $1+x$ (i.e.\ $\zbar$) branch:
+$\prod_p(1+x)=\zeta(s)/\zeta(2s)$ and $\prod_p(1-x)^{-1}=\zeta(s)$ combine to
+$\zeta(s)^2/\zeta(2s)$.
+
+\subsection{Where it fails --- and it is always the numerator's fault}
+
+The non-terminating cases all fail Theorem~\ref{thm:termination} in the
+\emph{numerator}:
+\begin{itemize}
+\item \textbf{$\varphi^2(n)$ (Mathar \S3.13.1).} $B_p=\dfrac{1-(2p-1)x}{1-p^2x}$:
+the denominator is admissible, but $2p-1\notin\{\pm p^l\}$, so the numerator is not,
+and the product is genuinely infinite \eqref{eq:mathar-phi2}.
+\item \textbf{$1/\varphi(n)^2$ (our target).} By
+Proposition~\ref{prop:bell-1overphi2} the numerator coefficient
+$\frac{2p-1}{(p-1)^2p^2}$ is not a monomial in $p$; same obstruction.
+\item \textbf{$\sum_n 1/(n\varphi(n))$ (numeric).} Here
+$B_p=\dfrac{1-q+q^3}{1-q-q^2+q^3}$ with $q=p^{-1}$. The denominator factors as
+$(1-q)(1-q^2)$, but the numerator $1-q+q^3$ has a real zero $q\approx-1.3247$ off
+the unit circle, so by Proposition~\ref{prop:cyclotomic} the extraction cannot
+terminate --- which is why we only ever use it for the truncated approximation
+$\approx 2.2039$ of \S\ref{sec:anchor}.
+\end{itemize}
+
+\begin{remark}[It is structurally the numerator]
+In every failure the denominator is already a product of admissible
+binomials/cyclotomics; termination breaks solely on the numerator. That is not an
+accident: denominators come from geometric sums $\sum_e(p^kx)^e$ and are
+automatically admissible, whereas the numerator encodes the arithmetic ``defect'' of
+$a(p^e)$ and need not be.
+\end{remark}
+
+\begin{remark}[A sign convention that can defeat an otherwise finite case]
+The FORM/Mathematica drivers keep the extracted exponents nonnegative, switching to
+the $1+x^u$ branch (via \eqref{eq:euler-plus}) whenever the leading discrepancy is
+negative. Because $1+x^u=(1-x^{2u})/(1-x^u)$ this stays admissible but does not peel
+a $1-x^u$ factor in reverse: on input $B_p=1-x$ the greedy runs
+$1-x\to1-x^2\to1-x^4\to\cdots$ forever, doubling the order, even though $B_p$ is a
+single admissible binomial. To make the driver's halting match
+Theorem~\ref{thm:termination}, the negative-coefficient branch must be allowed to
+emit $(1-x^u)^{\gamma}$ with $\gamma<0$ (accumulating $\zeta(us-l)^{\gamma}$) rather
+than routing through $1+x^u$.
+\end{remark}
+
+\section{Computing it without blowing up: the logarithmic stream}
+\label{sec:logstream}
+
+There is a naive way to run the algorithm and a much better one. The naive way keeps
+the numerator as a fully expanded polynomial and multiplies each new binomial into
+it; the degree balloons and the whole thing chokes (our FORM driver does exactly
+this, and hangs around order 50). The better way works in $\log$-space, where
+\emph{multiplying} binomials becomes \emph{adding} their logarithms --- and those
+logarithms are sparse.
+
+Fix the numeric case and drop to a single variable $q$: let $\mathrm{Num}(q)$ and
+$\mathrm{Den}(q)$ be integer polynomials with constant term $1$, and
+\[
+B(q)=\frac{\mathrm{Num}(q)}{\mathrm{Den}(q)}=1+\sum_{k\ge1}B_k q^k .
+\]
+Because $\mathrm{Den}(0)=1$, its inverse is again an integer series, so every
+$B_k\in\mathbb{Z}$. Write $[q^k]f$ for the coefficient of $q^k$ in $f$.
+
+\subsection{Two ways to carry the state}
+
+\paragraph{Direct.} Keep the integer coefficients of the running numerator $N$
+(initially $\mathrm{Num}$). The residual at order $k$ is
+$c=[q^k]N-[q^k]\mathrm{Den}$; folding a factor \emph{convolves} $N$ with a binomial.
+
+\paragraph{Log.} Keep instead the residual logarithm
+$R(q)=\log N(q)-\log\mathrm{Den}(q)$ (initially $\log B$). The only atoms we ever add
+are sparse --- supported on multiples of $k$:
+\begin{align}
+\log(1-q^k) &= -\sum_{m\ge1}\tfrac{1}{m}q^{km}
+            = -\big(q^k+\tfrac12 q^{2k}+\tfrac13 q^{3k}+\cdots\big),\label{eq:logminus}\\
+\log(1+q^k) &= \sum_{m\ge1}\tfrac{(-1)^{m-1}}{m}q^{km}
+            = q^k-\tfrac12 q^{2k}+\tfrac13 q^{3k}-\cdots.\label{eq:logplus}
+\end{align}
+Folding a factor now just \emph{adds} a multiple of \eqref{eq:logminus} or
+\eqref{eq:logplus} to $R$ --- an addition of a sparse series instead of a
+convolution. The one catch is the $\tfrac1m$: $R$ carries rational coefficients, and
+you might worry that ``reading off'' the next factor is no longer a clean integer.
+It is.
+
+\subsection{Why the read is always an integer}
+
+Sweep $k=1,2,3,\dots$, cancelling as you go, and read $c=[q^k]R$ once all lower
+orders are zero.
+
+\begin{lemma}[Integrality at the reading order]
+\label{lem:integer}
+If $[q^j]R=0$ for all $0<j<k$, then $c=[q^k]R\in\mathbb{Z}$, and in fact
+$c=[q^k](N/\mathrm{Den})$ --- exactly the integer the direct method reads.
+\end{lemma}
+
+\begin{proof}
+Let $S=N/\mathrm{Den}$, so $R=\log S$ and $S=\exp(R)$. With $[q^j]R=0$ for $0<j<k$,
+\[
+S=\exp(R)=1+[q^k]R\,q^k+O(q^{k+1}),
+\]
+since every nonlinear term of $\exp$ is a product of two or more terms of $R$, each
+of order $\ge k$, hence of order $\ge 2k>k$. So $[q^k]S=[q^k]R$. But $N$ and
+$\mathrm{Den}^{-1}$ are integer series, so $S$ is too, and $[q^k]S\in\mathbb{Z}$.
+\end{proof}
+
+\begin{remark}[Where the fractions hide]
+The $\tfrac1m$ parts of \eqref{eq:logminus}--\eqref{eq:logplus} really do land in
+$R$ --- but only at orders \emph{above} the current $k$ (the first fractional term
+of $\log(1\pm q^k)$ is $\mp\tfrac12 q^{2k}$). By the time the sweep reaches any
+order, everything below it has been cancelled, so Lemma~\ref{lem:integer} applies
+afresh: you never actually read a fraction.
+\end{remark}
+
+\subsection{Choosing the factor, and the zeta it becomes}
+
+With $c=[q^k]R$ in hand as an integer, use the same branch as the direct method:
+\[
+c>0:\ f=(1-q^k)^{c},\qquad c<0:\ f=(1+q^k)^{-c},
+\]
+and add $\log f$ to $R$. By \eqref{eq:logminus}--\eqref{eq:logplus} either choice has
+$[q^k]\log f=-c$, so $R$'s order-$k$ coefficient goes to $0$ and only higher orders
+move. In the single-$q$ toy $\zeta(k)\leftrightarrow 1/(1-q^k)$ and
+$1+q^k=\zeta(k)/\zeta(2k)$, so each folded factor contributes to $B$
+\[
+c>0:\ \zeta(k)^{c}, \qquad c<0:\ \zeta(k)^{c}\,\zeta(2k)^{-c},
+\]
+with exponents accumulated as \emph{net} totals per argument --- so a later step can
+cancel a $\zeta$ emitted earlier (e.g.\ a $1+q^8$ emits $\zeta(16)$, and a later
+$1+q^{16}$ removes it).
+
+\subsection{A worked micro-example}
+
+Take $\mathrm{Num}=1-q+q^3$, $\mathrm{Den}=1-q-q^2+q^3$ again. To fourth order,
+\[
+\log\mathrm{Num}=-q-\tfrac12 q^2+\tfrac23 q^3+\tfrac34 q^4+\cdots,\qquad
+\log\mathrm{Den}=-q-\tfrac32 q^2-\tfrac13 q^3-\tfrac34 q^4+\cdots,
+\]
+so their difference is \emph{not} integral,
+\[
+L=\log\mathrm{Num}-\log\mathrm{Den}
+ =q^2+q^3+\tfrac32 q^4+\cdots .
+\]
+Order $1$ cancels; at order $2$ the halves and three-halves combine to the integer
+$[q^2]L=1$ --- the first factor (power $2$, coefficient $+1$). But at order $4$ the
+raw coefficient is the \emph{fraction} $\tfrac32$: the lemma does not apply there
+yet, because orders $2,3$ are still uncancelled. Run the sweep: read $c=1$ at $k=2$
+and add $\log(1-q^2)=-(q^2+\tfrac12 q^4+\cdots)$; read $c=1$ at $k=3$ and add
+$\log(1-q^3)$. Now
+\[
+[q^4]R=\tfrac32-\tfrac12+0=1\in\mathbb{Z},
+\]
+exactly the next factor (power $4$, coefficient $+1$). The coefficient that was a
+fraction in the raw log becomes a clean integer the moment the sweep is entitled to
+read it. (The FORM demo \texttt{log\_expand.frm} prints exactly this: raw $L$ carries
+$\tfrac32 q^4$, the residual after peeling orders $2,3$ carries $q^4$.)
+
+\subsection{Cost}
+
+Per factor at power $k$, updating $R$ to working order $N$ touches only the
+$\lfloor N/k\rfloor$ multiples of $k$ --- an $O(N/k)$ sparse addition, versus the
+$O(N)$ convolution the direct method needs. The only real overhead is arithmetic
+over $\mathbb{Q}$ rather than $\mathbb{Z}$; since each read is an integer
+(Lemma~\ref{lem:integer}), one can even reduce the tail modulo the processed part to
+keep denominators small, though that is an optimization, not a necessity. In
+practice the truncated-stream implementation produces 50 factors in a blink where
+the dense FORM expansion hangs.
+
+\section{The actual target: $1/\varphi(n)^2$}
+\label{sec:target}
 
 \begin{proposition}
 \label{prop:bell-1overphi2}
@@ -195,78 +472,56 @@ B_p(x) = \frac{(p-1)^2p^2 + (2p-1)x}{(p-1)^2(p^2-x)}, \qquad x = p^{-s}.
 \end{proposition}
 
 \begin{proof}
-Master equation: $a(p^e) = 1/\varphi(p^e)^2 = (p-1)^{-2}p^{-2e+2}$ for $e\ge1$,
+Master equation: $a(p^e)=1/\varphi(p^e)^2=(p-1)^{-2}p^{-2e+2}$ for $e\ge1$,
 $a(1)=1$. Then
 \[
-B_p(x) = 1 + \sum_{e\ge1} \frac{p^{2-2e}}{(p-1)^2}\,x^e
-= 1 + \frac{p^2}{(p-1)^2}\sum_{e\ge1}\Big(\frac{x}{p^2}\Big)^e
+B_p(x) = 1 + \sum_{e\ge1}\frac{p^{2-2e}}{(p-1)^2}x^e
 = 1 + \frac{p^2}{(p-1)^2}\cdot\frac{x/p^2}{1-x/p^2}
 = 1 + \frac{x}{(p-1)^2}\cdot\frac{1}{1-x/p^2},
 \]
-valid for $|x|<p^2$ (i.e. $\Re(s)$ large enough, uniformly boundable since we
-only need this as a formal identity of rational functions). Clearing
-denominators,
+and clearing denominators, with $p^2-(p-1)^2=2p-1$,
 \[
-B_p(x) = \frac{(p-1)^2(p^2-x) + xp^2}{(p-1)^2(p^2-x)}
-= \frac{(p-1)^2p^2 + x\big[p^2-(p-1)^2\big]}{(p-1)^2(p^2-x)}
-= \frac{(p-1)^2p^2 + (2p-1)x}{(p-1)^2(p^2-x)},
+B_p(x)=\frac{(p-1)^2(p^2-x)+xp^2}{(p-1)^2(p^2-x)}
+      =\frac{(p-1)^2p^2+(2p-1)x}{(p-1)^2(p^2-x)}.
 \]
-using $p^2-(p-1)^2 = 2p-1$.
 \end{proof}
 
-\subsection{Normalized form and first observations}
-
-Dividing numerator and denominator by $(p-1)^2p^2$ to put $B_p(0)=1$:
+Normalizing to $B_p(0)=1$ (divide through by $(p-1)^2p^2$),
 \begin{equation}
 \label{eq:phi-inv-sq-normalized}
 B_p(x) = \frac{1+\dfrac{2p-1}{(p-1)^2p^2}\,x}{1-\dfrac{1}{p^2}x}.
 \end{equation}
+The denominator $1-p^{-2}x$ is exactly $1-p^{\,l-us}$ with $(l,u)=(-2,1)$, so by
+\eqref{eq:euler-minus} it hands us a clean $\zeta(s+2)^{-1}$ straight away. The
+numerator is the problem: its coefficient $\frac{2p-1}{(p-1)^2p^2}$ is not a Laurent
+monomial in $p$ (it is a genuine rational function of $p$), so it is not of the
+$p^{c}$ shape the extraction pattern-matches on. Two ways out:
 
-\begin{remark}[Flag: does not obviously match the algorithm's assumed template]
-The denominator factor $1-p^{-2}x = 1-p^{-2-s}$ is exactly of the form
-$1-p^{l-us}$ with $(l,u)=(-2,1)$, so by \eqref{eq:euler-minus} it contributes
-$\zeta(s+2)^{-1}$ to $\zD$ directly — a clean, finite piece.
-
-The numerator, however, has coefficient $\dfrac{2p-1}{(p-1)^2p^2}$, which is
-\emph{not} a Laurent monomial in $p$ (it is a proper rational function of $p$
-with a pole at $p=1$, which never occurs among primes but is still not of the
-$p^{c}$ shape our extraction step pattern-matches on term by term). This means:
 \begin{itemize}
-\item Either the extraction must proceed by first expanding this coefficient
-in a partial-fraction / asymptotic series in $1/p$ (i.e. $\frac{2p-1}{(p-1)^2p^2}
-= \sum_k c_k p^{-k}$ for appropriate rational $c_k$, valid for the range of $p$
-that matters, and each such term then seeds its own zeta factor at the
-appropriate order) — effectively the numerator itself is not degree-1 in $x$
-once expanded this way, it is a full power series in $x$ whose $p$-dependence
-at each order in $x$ must independently be decomposed into $p$-power monomials;
-\item or there is no finite factorization and the extraction is a genuinely
-infinite, non-terminating recursion whose $\gamma_i$ pattern we would need to
-conjecture numerically (as Mathar did for $\varphi^2(n)$) rather than derive
-in closed form.
+\item expand that coefficient as a series in $1/p$,
+$\frac{2p-1}{(p-1)^2p^2}=\sum_k c_k p^{-k}$, and let each term seed its own zeta
+factor --- so the ``numerator'' is really a full power series in $x$ whose
+$p$-dependence at each order must be decomposed into $p$-power monomials; or
+\item there is no finite factorization and the extraction is a genuinely infinite,
+non-terminating recursion, whose exponent pattern we would conjecture numerically
+(as Mathar did for $\varphi^2$) rather than derive in closed form.
 \end{itemize}
-This needs to be checked computationally (run the term-by-term extractor to
-enough orders and look for a recognizable exponent sequence, ideally cross-checked
-against OEIS the way Mathar does) before we assert either alternative. Flagging
-this explicitly rather than asserting a closed form we have not verified.
-\end{remark}
+Which one holds is a computation, not a guess: run the extractor to enough orders,
+look for a recognizable exponent sequence (ideally cross-checked against OEIS, the
+way Mathar does), and only then commit to a statement.
 
-\section{Next steps}
+\section{Where this is going}
 
 \begin{enumerate}
-\item Reimplement the extraction algorithm in Haskell on exact \texttt{Rational}
-coefficients, first validated against Mathar's $\varphi^2(n)$ example
-\eqref{eq:mathar-phi2} (16 known terms) and against the trivially-finite Jordan
-totient case $J_k(n) \mapsto \zeta(s-k)/\zeta(s)$ (his eq.~(3.87)) as a
-terminating sanity check.
-\item Once validated, run it on Proposition~\ref{prop:bell-1overphi2}'s $B_p(x)$
-for $1/\varphi(n)^2$ to sufficient order in $x$ and extract/conjecture the
-$(l_i,u_i,\gamma_i)$ sequence.
-\item Search OEIS for the resulting exponent sequence, the way Mathar
-cross-references A-numbers throughout — this is a cheap and effective
-correctness check.
-\item Only after (2)--(3) succeed, write the closed-form (or asymptotic infinite
-product) statement for $1/\varphi(n)^2$ as a theorem with proof, in the same
-style as Proposition~\ref{prop:bell-1overphi2}.
+\item Run the exact-rational extractor first on Mathar's $\varphi^2(n)$
+\eqref{eq:mathar-phi2} (16 known terms) and the terminating Jordan case
+$J_k\mapsto\zeta(s-k)/\zeta(s)$ as sanity checks.
+\item Then run it on Proposition~\ref{prop:bell-1overphi2}'s $B_p(x)$ for
+$1/\varphi(n)^2$ to good order and extract/conjecture the $(l_i,u_i,\gamma_i)$
+sequence.
+\item Search OEIS for that sequence --- cheap and effective.
+\item Only after (2)--(3) succeed, write the closed-form (or asymptotic
+infinite-product) statement for $1/\varphi(n)^2$ as a theorem with proof.
 \end{enumerate}
 
 \begin{thebibliography}{9}
