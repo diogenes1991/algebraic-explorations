@@ -173,3 +173,12 @@ cython_debug/
 
 # Compiled LaTeX
 *.pdf
+
+# Local machine/operational notes (never committed)
+.memory/
+
+# Emitted by tex_reduction.py (generated output, not source)
+euler_products/tex/reduction*.tex
+
+# Blog-post draft (kept local, not committed)
+euler_products/quora_post.md
