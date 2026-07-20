@@ -1,8 +1,14 @@
 # algebraic-explorations
 
-Personal repo of mathematical / algebraic explorations: Jupyter notebooks, symbolic
-computation with [FORM](https://github.com/vermaseren/form), and supporting code in
-several languages.
+Personal repo of long-term mathematical explorations, mostly in **algebraic
+geometry** and **algebraic number theory**: Jupyter notebooks, symbolic computation
+(notably with [FORM](https://github.com/vermaseren/form)), and supporting code in
+several languages (C++, Haskell, Python, Mathematica).
+
+Each self-contained exploration lives in its own top-level directory with its **own
+`CLAUDE.md`** carrying the math, notation, and workflow specific to it. This file
+covers only what is true repo-wide; read the active exploration's `CLAUDE.md` for the
+details of the work at hand.
 
 ## Working modes ("hats")
 
@@ -10,13 +16,10 @@ Work happens under one of two hats; **the current hat is stated at the end of th
 section.** Stay within the active hat unless told to switch.
 
 - **Writeup** — documentation only. Touch only `.tex`, `.md`, and comments in code;
-  do not change code behavior. Notation conventions for the math notes:
-  - use `q = p^{-1}` everywhere (never `x = p^{-s}`), so `s` stays explicit in the
-    exponents (`q^s`, `q^{s-1}`, `q^{us-l}`) — the exponent on `q` is the ζ-argument;
-  - show the input as the full summand with `s` visible (`φ(n)/n^s ↦ ζ(s-1)/ζ(s)`),
-    never hiding `s` (not `φ(n) ↦ …`).
+  do not change code behavior. Follow the math-notation conventions in the active
+  exploration's own `CLAUDE.md`.
 - **Develop** — algorithms and debugging. Write and modify code (FORM, Haskell,
-  Python), run it, verify.
+  Python, C++, Mathematica), run it, verify.
 
 **Current hat: Writeup.**
 
@@ -26,8 +29,8 @@ section.** Stay within the active hat unless told to switch.
 src/                  shared, reusable code organized by language
   frm/                FORM helper library (algexp.hrm) — globally reusable #procedures
   cpp/ hs/ py/ m/     C++, Haskell, Python, Mathematica helpers
-euler_products/       exploration: Euler φ / Euler-product extraction
-                      (FORM drivers, C++/Haskell extractors, LaTeX in tex/)
+<exploration>/        one directory per exploration, each with its own CLAUDE.md
+  euler_products/     Euler φ / Euler-product → ζ-ratio extraction
 *.ipynb               standalone notebooks (Complex_Roots, Spacetime_Diagrams)
 ```
 
@@ -50,10 +53,11 @@ euler_products/       exploration: Euler φ / Euler-product extraction
 
 ## Running
 
-- FORM: `cd euler_products && form highest_power.frm` (use `tform` for the
-  threaded build). FORM is not preinstalled everywhere — build from
-  github.com/vermaseren/form if missing.
+- FORM: run a driver from its own exploration folder, e.g. `cd <exploration> && form
+  driver.frm` (use `tform` for the threaded build). FORM is not preinstalled
+  everywhere — build from github.com/vermaseren/form if missing.
 - Notebooks: open the `.ipynb` files in Jupyter.
+- Per-exploration run details live in that exploration's `CLAUDE.md`.
 
 ## Editing
 
@@ -62,4 +66,4 @@ euler_products/       exploration: Euler φ / Euler-product extraction
   repackage/reinstall.
 
 ---
-*Draft — expand per-area details in the relevant subdirectory's own CLAUDE.md.*
+*Repo-wide conventions only — per-exploration details live in each subdirectory's own `CLAUDE.md`.*
