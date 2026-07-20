@@ -166,6 +166,116 @@ the next-order term and recursing is exactly the \textbf{plethystic logarithm} o
 the physics literature (Feng--Hanany--He); it terminates in the same ``nice'' cases
 and runs forever in general.
 
+\subsection{A transform worked in full: $1/\varphi(n)$, and the anchor as its $s=1$ slice}
+\label{sec:transform-invphi}
+
+The anchor of \S\ref{sec:anchor} is not a number that fell from the sky; it is one
+\emph{value} of a transform. The arithmetic function underneath $\sum_n1/(n\varphi(n))$
+is $1/\varphi(n)$, and Mathar's arrow $\varphi(n)/n^s\mapsto\zeta(s-1)/\zeta(s)$ invites
+us to ask for the whole $s$-family
+\[
+\frac{1}{\varphi(n)\,n^{s}}\ \longmapsto\
+D_{1/\varphi}(s):=\sum_{n\ge1}\frac{1}{\varphi(n)\,n^{s}},
+\]
+and only afterwards to set $s=1$, which returns $\sum_n1/(n\varphi(n))$.
+
+\paragraph{The Bell factor.} With $\varphi(p^e)=(p-1)p^{e-1}$ for $e\ge1$ and $q=p^{-1}$,
+\begin{equation}
+\label{eq:invphi-bell}
+B_p=1+\sum_{e\ge1}\frac{q^{se}}{(p-1)p^{\,e-1}}
+   =1+\frac{q^{\,s+1}}{(1-q)(1-q^{\,s+1})}
+   =\frac{1-q+q^{\,s+2}}{(1-q)(1-q^{\,s+1})}.
+\end{equation}
+(Sum the geometric series in $q^{s}$, then clear denominators using $p-1=p(1-q)$; the
+middle form isolates the single ``correction'' term that all the arithmetic content
+rides on.) Numerator and both denominator factors have constant term $1$, so
+$B_p\to1$ as $q\to0$ and the greedy peeling of \S\ref{sec:algo} applies verbatim.
+
+\paragraph{The anchor is the $s=1$ slice.} Put $s=1$: then $q^{s+1}=q^{2}$,
+$q^{s+2}=q^{3}$, and
+\[
+B_p\big|_{s=1}=\frac{1-q+q^{3}}{(1-q)(1-q^{2})}=\frac{1-q+q^{3}}{1-q-q^{2}+q^{3}},
+\]
+exactly the rational factor of \S\ref{sec:anchor}. So the ``numeric'' object we
+truncated to reach $2.2039\ldots$ is $D_{1/\varphi}(s)$ evaluated at $s=1$: running the
+extractor on $(1-q+q^{3})/(1-q-q^{2}+q^{3})$ is running the transform with $s$ already
+specialized. This is the precise sense in which the numeric case of \S\ref{sec:setup}
+(all $l_i=0$) is a \emph{slice} of the full, $s$-dependent transform.
+
+\paragraph{The first layer of the transform.} Keep $s$ symbolic and read $B_p$ as a
+series in $q^{s}$. A short computation from \eqref{eq:invphi-bell} gives strikingly
+uniform \emph{input} coefficients (the \emph{extracted} exponents, by contrast, are
+anything but --- see the remarks below),
+\[
+B_p=1+\frac{1}{1-q}\sum_{u\ge1}q^{u}\,q^{us}
+   =1+\frac{q^{\,s+1}}{1-q}+\frac{q^{\,2s+2}}{1-q}+\cdots,
+\]
+i.e.\ the coefficient of $q^{us}$ is $q^{u}/(1-q)$ for every $u\ge1$. The lowest layer
+$u=1$ is $q^{s+1}/(1-q)=q^{s+1}+q^{s+2}+q^{s+3}+\cdots$; peeling it one power at a time
+(each $q^{s+m}$ is an admissible binomial of argument $s+m$) produces a clean chain
+\[
+\prod_{m\ge1}\bigl(1-q^{\,s+m}\bigr)^{-1}\ \longmapsto\
+\prod_{m\ge1}\zeta(s+m)=\zeta(s+1)\,\zeta(s+2)\,\zeta(s+3)\cdots,
+\]
+which is the leading ($u=1$) approximation to $D_{1/\varphi}(s)$.
+
+\paragraph{Why it does not terminate.} The uniform coefficients $q^{u}/(1-q)$ cannot
+close into a finite product. Dividing out the entire $u=1$ chain (multiply $B_p$ by
+$\prod_{m\ge1}(1-q^{s+m})$) leaves not $1$ but
+\[
+B_p\prod_{m\ge1}\bigl(1-q^{\,s+m}\bigr)
+   =1-\frac{q^{\,2s+4}}{(1-q)(1-q^{2})}+\cdots,
+\]
+so a genuine $u=2$ layer opens up, its first factor of argument $2s+4$ (leading term
+$-q^{2s+4}$, hence the $1+$ branch, contributing $\zeta(4s+8)/\zeta(2s+4)$), and
+$u=3,4,\dots$ follow. By Theorem~\ref{thm:termination} the obstruction is the
+numerator $1-q+q^{\,s+2}$: it is not a single admissible binomial (it carries the
+$s$-free $1-q$ \emph{and} the shifted $q^{\,s+2}$), the same way Mathar's $\varphi^2(n)$
+and our target $1/\varphi(n)^2$ (\S\ref{sec:target}) fail. So the transform is an
+honest infinite product,
+\[
+D_{1/\varphi}(s)=\Bigl(\prod_{m\ge1}\zeta(s+m)\Bigr)\cdot\frac{\zeta(4s+8)}{\zeta(2s+4)}\cdots,
+\]
+the $u\ge2$ tail supplying corrections whose exponents grow without bound (already the
+$u=2$ residual $-q^{\,2s+4}/[(1-q)(1-q^2)]$ carries coefficients $1,1,2,2,3,3,\dots$).
+
+\begin{remark}[The divergent $\zeta(1)$ that never appears]
+Written as a fraction, $B_p$ carries $1-q$ in its denominator --- formally
+$\prod_p(1-q)^{-1}=\zeta(1)$, a divergence. It never reaches the transform: the
+numerator's own $1-q$ cancels it at $q$-order~$1$ (the two agree there), so the first
+surviving factor is the $s$-dependent $\zeta(s+1)$. This is why $D_{1/\varphi}(s)$
+converges for $\Re(s)>0$, with leading behaviour $\zeta(s+1)$ and rightmost pole at
+$s=0$, even though a careless factor-by-factor reading suggests otherwise --- the
+extraction must be read as a whole.
+\end{remark}
+
+\begin{remark}[Only the $u=1$ layer is smooth]
+Beyond $u=1$ the exponent pattern is genuinely irregular, not a tidy sequence to read
+off in closed form. Running the numeric ($s=1$) extractor to order $50$ makes this
+vivid: the clean start
+\[
+\frac{\zeta(2)\zeta(3)\zeta(4)\zeta(5)}{\zeta(8)\zeta(9)\zeta(10)}\cdot
+\zeta(13)\zeta(14)\cdots
+\]
+soon acquires exponents outside $\{0,\pm1\}$ --- $\zeta(18)^{-2}$, $\zeta(22)^{2}$,
+$\zeta(26)^{-3}$, \dots{} --- reaching magnitudes in the dozens (e.g.\
+$\zeta(49)^{40}$) by order $50$. This is the same conjecture-and-check situation as the
+target $1/\varphi(n)^2$ (\S\ref{sec:target}): the sequence is a candidate for OEIS, not
+a formula.
+\end{remark}
+
+\begin{remark}[Well-behaved value, irregular pattern]
+The \emph{value} is fine even where the \emph{pattern} is not. At $s=1$ the order-$50$
+extraction reconstructs $2.2038566$, matching a direct sum
+$\sum_{n\le2\cdot10^{6}}1/(n\varphi(n))=2.2038556$ to seven digits. The $u=1$
+resummation alone, $\prod_{m\ge1}\zeta(1+m)=\prod_{k\ge2}\zeta(k)=2.29486\ldots$,
+already lands within $4\%$, and the (irregular) $u\ge2$ tail supplies the rest. The
+catch in reading it term by term is the $s=1$ \emph{collapse}: distinct symbolic
+factors such as $\zeta(s+5)$ and $\zeta(2s+4)$ both become $\zeta(6)$, so the net
+exponent of each $\zeta(k)$ is itself a sum over layers --- which is why the $s=1$
+series is not easy to compute directly.
+\end{remark}
+
 \section{Mathar got here first}
 
 R.~J.~Mathar's \emph{Survey of Dirichlet Series of Multiplicative Arithmetic
