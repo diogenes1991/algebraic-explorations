@@ -23,6 +23,11 @@
 *   perturbing the count (xPLtmp for the power helpers, xCOAT for CoeffAt).
 Symbol xPLtmp;
 Symbol xCOAT;
+Symbol xDVtmp;
+Symbol xDRtmp, xDRmark;
+Symbol xPRtmp, xPRlead, xPRlow, xPRcoef, xPRaid;
+Symbol n, xPRw;
+CFunction PRNum, PRDen;
 
 *---------------------------------------------------------------------------
 #procedure HighestPower(EXPR,SYMB,POW)
@@ -235,6 +240,237 @@ Symbol xCOAT;
     Drop LEONE;
     Drop LEPOW;
     .sort
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure Derivative(EXPR,SYMB)
+*
+*   Differentiate the polynomial in `EXPR' with respect to `SYMB'.
+*   Result overwrites `EXPR'.
+*
+*   Arguments (all passed by name, FORM-style):
+*       EXPR  - a $-variable holding the polynomial, e.g. $poly
+*       SYMB  - the symbol to differentiate w.r.t., e.g. x
+*
+*   Usage:
+*       Symbols x, ... ;
+*       Local dummy = 1;
+*       .sort
+*       $poly = x^3 + 2*x^2 - x + 5;
+*       .sort
+*       #call Derivative($poly,x)
+*       * $poly is now 3*x^2 + 4*x - 1
+
+    `EXPR' = xDVtmp*(``EXPR'');
+    .sort
+
+    #call HighestPower(`EXPR',`SYMB',$DVdeg)
+
+    #do DVi=1,{`$DVdeg'+1}
+        #inside `EXPR'
+            id xDVtmp*`SYMB'^{`$DVdeg'-`DVi'+1} = {`$DVdeg'-`DVi'+1}*`SYMB'^{`$DVdeg'-`DVi'};
+        #endinside
+    #enddo
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure PrimitivePart(EXPR)
+*
+*   Divide out the GCD of all numerical coefficients in `EXPR' (make the
+*   polynomial primitive).  Result overwrites `EXPR'.
+*
+*   Arguments:
+*       EXPR  - a $-variable holding the polynomial
+
+    .sort
+    $PPfac = factorin_(`EXPR');
+    .sort
+    `EXPR' = (`$PPfac')^-1*(``EXPR'');
+    .sort
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure DivideOutRoot(EXPR,SYMB,ROOT)
+*
+*   Divide out the factor (`SYMB' - `ROOT') from `EXPR' with full
+*   multiplicity.  Result overwrites `EXPR'.
+*
+*   Arguments (all passed by name, FORM-style):
+*       EXPR  - a $-variable holding the polynomial, e.g. $poly
+*       SYMB  - the variable, e.g. r
+*       ROOT  - the root value (number or $-variable), e.g. 2
+*
+*   Usage:
+*       Symbols r, ... ;
+*       Local dummy = 1;
+*       .sort
+*       $poly = r^3 - 7*r^2 + 16*r - 12;   * = (r-2)^2*(r-3)
+*       .sort
+*       $root = 2;
+*       #call DivideOutRoot($poly,r,$root)
+*       * $poly is now r - 3
+
+    .sort
+    Hide;
+    .sort
+    Local DRLOCAL = xDRmark*replace_(`SYMB',xDRtmp)*(`EXPR');
+    id xDRtmp = (xDRtmp+(``ROOT''));
+    $DRmax = -1;
+    .sort
+
+    if ( count(xDRtmp,1) > $DRmax ) $DRmax = count_(xDRtmp,1);
+    .sort
+
+    id xDRmark*xDRtmp^n? = xDRmark*xDRtmp^(`$DRmax'-n);
+    .sort
+
+    $DRmin = -1;
+    .sort
+
+    if ( count(xDRtmp,1) > $DRmin ) $DRmin = count_(xDRtmp,1);
+    .sort
+
+    id xDRmark*xDRtmp^n? = (`SYMB'-(``ROOT''))^(`$DRmin'-n);
+    .sort
+
+    `EXPR' = DRLOCAL;
+    .sort
+
+    Drop DRLOCAL;
+    .sort
+
+    Unhide;
+    .sort
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure PolyLeadRule(MOD,SYMB,LHS,RHS,DEG,LC)
+*
+*   From the polynomial equation `MOD'(`SYMB') = 0, extract a substitution
+*   rule expressing the leading power of `SYMB' in terms of lower powers.
+*   Use with PolyReduce to reduce another polynomial modulo `MOD' = 0.
+*
+*   Arguments (all passed by name, FORM-style):
+*       MOD   - $-variable holding the modulus polynomial P(SYMB) = 0
+*       SYMB  - the variable
+*       LHS   - $-variable: receives SYMB^DEG (the power to eliminate)
+*       RHS   - $-variable: receives the replacement (with PRDen wrapper)
+*       DEG   - $-variable: receives the degree of the reduction
+*       LC    - $-variable: receives the leading coefficient (in PRNum wrapper)
+*
+*   The RHS contains a PRDen(...) wrapper and LC contains a PRNum(...)
+*   wrapper; these are used by PolyReduce for fraction-free bookkeeping.
+
+    Hide;
+    .sort
+    Local PRLOCAL = replace_(`SYMB',xPRtmp)*(`MOD');
+    .sort
+
+    $PRmax = -1;
+    .sort
+
+    if ( count(xPRtmp,1) > $PRmax ) $PRmax = count_(xPRtmp,1);
+    .sort
+
+    $PRmin = $PRmax;
+    .sort
+
+    if ( count(xPRtmp,1) < $PRmin ) $PRmin = count_(xPRtmp,1);
+    .sort
+
+    id xPRtmp^`$PRmax' = xPRlead;
+    .sort
+
+    $PRnum = replace_(xPRtmp,xPRlow)*replace_(xPRlead,0)*PRLOCAL;
+    $PRden = xPRcoef*replace_(xPRlead,xPRcoef)*PRLOCAL;
+    .sort
+
+    Local PRLOCAL = PRNum(`$PRnum')*PRDen(`$PRden');
+    Local PRAUX = PRNum(`$PRden');
+    .sort
+
+    argument;
+    id xPRcoef^2 = -1;
+    id xPRcoef = 0;
+    endargument;
+
+    .sort
+    `LC' = PRAUX;
+    .sort
+
+    id PRNum(xPRw?) = xPRw;
+    id xPRlow = `SYMB';
+    .sort
+
+*   Shift powers down by $PRmin to normalize (lowest power becomes 0)
+    #if (`$PRmin' > 0)
+    id `SYMB'^`$PRmin' = 1;
+    .sort
+    #endif
+
+    `RHS' = PRLOCAL;
+    `LHS' = `SYMB'^{`$PRmax'-`$PRmin'};
+    `DEG' = {`$PRmax'-`$PRmin'};
+    .sort
+
+    Drop PRLOCAL;
+    Drop PRAUX;
+    .sort
+
+    Unhide;
+    .sort
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure PolyReduce(EXPR,SYMB,LHS,RHS,DEG,LC)
+*
+*   Reduce the polynomial `EXPR' modulo a substitution rule produced by
+*   PolyLeadRule.  Each step multiplies by `LC' and substitutes the leading
+*   power, lowering the degree in `SYMB'.  After reduction, `EXPR' has
+*   degree < `DEG' in `SYMB'.  Numerical content is removed via
+*   PrimitivePart.  Result overwrites `EXPR'.
+*
+*   Arguments (all passed by name, FORM-style):
+*       EXPR  - $-variable holding the polynomial to reduce
+*       SYMB  - the variable
+*       LHS   - from PolyLeadRule (the leading monomial)
+*       RHS   - from PolyLeadRule (the replacement, with PRDen wrapper)
+*       DEG   - from PolyLeadRule (degree of the reduction)
+*       LC    - from PolyLeadRule (leading coefficient in PRNum wrapper)
+
+    Hide;
+    .sort
+    Local PRREDUCE = replace_(`SYMB',xPRaid)*(`EXPR');
+    $PRrhs = replace_(`SYMB',xPRaid)*(``RHS'');
+
+    $PRrdeg = -1;
+    if ( count(xPRaid,1) > $PRrdeg ) $PRrdeg = count_(xPRaid,1);
+    .sort
+
+    #do PRj=0,{`$PRrdeg'-``DEG''}
+        $PRiter = (xPRaid^{`$PRrdeg'-`PRj'-``DEG''})*(`$PRrhs');
+        .sort
+        Local PRREDUCE = (``LC'')*(PRREDUCE);
+        .sort
+        id xPRaid^{`$PRrdeg'-`PRj'} = `$PRiter';
+        id PRNum(xPRw?)*PRDen(xPRw?) = 1;
+        id PRNum(xPRw?) = xPRw;
+        .sort
+    #enddo
+
+    id xPRaid = `SYMB';
+    .sort
+
+    `EXPR' = PRREDUCE;
+    .sort
+
+    Drop PRREDUCE;
+    .sort
+
+    Unhide;
+    .sort
+
+    #call PrimitivePart(`EXPR')
 #endprocedure
 
 #endif

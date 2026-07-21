@@ -1,0 +1,415 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newtheorem{remark}{Remark}
+
+\title{Period-doubling bifurcations of the logistic map:\\
+\large deriving the exact polynomials with symbolic algebra}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+The logistic map $x\mapsto rx(1-x)$ undergoes a cascade of period-doubling
+bifurcations as the parameter $r$ increases from $1$ to $\approx 3.57$, after
+which the dynamics become chaotic.  The parameter values at which each doubling
+occurs are algebraic numbers --- they satisfy polynomial equations with integer
+coefficients.  These notes show how to derive those polynomials from scratch
+using nothing beyond the chain rule and polynomial long division, and explain
+how the FORM symbolic-algebra program in this directory automates the
+computation.  The ratios of successive bifurcation intervals converge to the
+Feigenbaum constant $\delta\approx 4.669$, a universal quantity that appears in
+every smooth one-hump map, not just the logistic one.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{The logistic map}
+\label{sec:logistic}
+%======================================================================
+
+Take a number $x_0\in[0,1]$ and iterate
+\begin{equation}
+\label{eq:logistic}
+x_{n+1} = f_r(x_n) = r\,x_n(1-x_n),
+\end{equation}
+where $r>0$ is a parameter you get to choose.  This is the \emph{logistic map},
+popularized by Robert May in 1976 as a toy model for population dynamics: $x_n$
+is the fraction of some carrying capacity at generation $n$, and $r$ controls
+growth.
+
+What makes it interesting is how its long-term behavior changes as $r$
+increases:
+\begin{itemize}
+\item $r<1$: every orbit converges to $x=0$ (the population dies).
+\item $1<r<3$: every orbit converges to a single equilibrium value.
+\item $3<r<1+\sqrt{6}\approx 3.449$: the equilibrium becomes unstable, and
+      orbits settle into a period-2 oscillation --- bouncing forever between
+      two values.
+\item As $r$ increases further, the 2-cycle itself destabilizes and splits into
+      a 4-cycle, then an 8-cycle, then 16, and so on.
+\item At $r_\infty\approx 3.5699\ldots$\, the cascade accumulates and the map
+      becomes chaotic.
+\end{itemize}
+Each of the transitions above happens at a \emph{specific} value of $r$, and
+those values satisfy polynomial equations.  The goal of this project is to
+derive those equations by symbolic computation.
+
+%======================================================================
+\section{Fixed points and stability}
+\label{sec:fixed}
+%======================================================================
+
+A \emph{fixed point} of $f_r$ is a value $x^*$ that maps to itself:
+$f_r(x^*)=x^*$.  For the logistic map this gives
+\[
+rx^*(1-x^*) = x^* \quad\Longrightarrow\quad x^*\bigl(r(1-x^*)-1\bigr)=0,
+\]
+so either $x^*=0$ or $x^*=1-1/r$.  Both are fixed points for any $r>1$, but
+only one of them can be \emph{stable} --- attracting nearby orbits.
+
+The stability criterion comes from linearizing: if we perturb $x^*$ by a small
+amount $\varepsilon$, then after one step the perturbation is approximately
+$f_r'(x^*)\,\varepsilon$.  The number $\lambda = f_r'(x^*)$ is called the
+\emph{multiplier}.  If $|\lambda|<1$ the perturbation shrinks (stable); if
+$|\lambda|>1$ it grows (unstable).  The boundary $|\lambda|=1$ is where the
+qualitative behavior changes --- a \emph{bifurcation}.
+
+For the nontrivial fixed point $x^*=1-1/r$:
+\begin{equation}
+\label{eq:mult1}
+\lambda = f_r'(x^*) = r\,(1-2x^*) = r\,\Bigl(1-2+\frac{2}{r}\Bigr) = 2-r.
+\end{equation}
+This satisfies $|\lambda|<1$ precisely when $1<r<3$.  At $r=3$ the multiplier
+hits $-1$, the fixed point becomes unstable, and a period-2 cycle is born.
+
+The sign matters: $\lambda=-1$ means orbits \emph{overshoot} past the fixed
+point on each step, alternating sides.  That alternation is exactly what turns
+into a genuine 2-cycle once the fixed point can no longer pull orbits back.
+
+%======================================================================
+\section{Period doubling: from cycles to algebra}
+\label{sec:doubling}
+%======================================================================
+
+A \emph{period-2 cycle} of $f_r$ is a pair $\{x_1,x_2\}$ with $f_r(x_1)=x_2$
+and $f_r(x_2)=x_1$.  Equivalently, $x_1$ and $x_2$ are fixed points of the
+second iterate $f_r^2=f_r\circ f_r$ that are \emph{not} fixed points of $f_r$
+itself.
+
+The second iterate $f_r^2(x)=f_r(f_r(x))$ is a degree-4 polynomial in $x$
+(each composition squares the degree).  Its fixed-point equation $f_r^2(x)=x$
+has degree 4, and two of the four roots are the already-known fixed points of
+$f_r$.  Factoring those out leaves a quadratic whose roots are the period-2
+points:
+\begin{equation}
+\label{eq:period2quad}
+r^2 x^2 - r(r+1)\,x + (r+1) = 0, \qquad
+x = \frac{(r+1)\pm\sqrt{(r+1)(r-3)}}{2r}.
+\end{equation}
+The discriminant $(r+1)(r-3)$ is positive only for $r>3$, confirming that the
+2-cycle exists only past the first bifurcation.
+
+Now the same stability question applies to the 2-cycle.  Its multiplier is the
+derivative of $f_r^2$ evaluated at either cycle point, which the chain rule
+factors as
+\[
+(f_r^2)'(x_1) = f_r'(x_1)\cdot f_r'(x_2).
+\]
+Using Vieta's formulas on the quadratic~\eqref{eq:period2quad} ($x_1+x_2 =
+(r+1)/r$, $x_1 x_2 = (r+1)/r^2$) and expanding gives the multiplier
+\begin{equation}
+\label{eq:mult2}
+(f_r^2)'(x_1) = -r^2+2r+4.
+\end{equation}
+Setting this equal to $-1$ (the threshold for the next period doubling):
+\[
+-r^2+2r+4 = -1 \quad\Longrightarrow\quad r^2-2r-5=0
+\quad\Longrightarrow\quad r=1+\sqrt{6}\approx 3.449.
+\]
+So the exact parameter value at which the 2-cycle destabilizes and a 4-cycle is
+born is $r=1+\sqrt{6}$, satisfying the degree-2 polynomial $r^2-2r-5=0$.  This
+is the \emph{bifurcation polynomial} for the $2\to 4$ transition.
+
+%======================================================================
+\section{The general bifurcation conditions}
+\label{sec:general}
+%======================================================================
+
+The pattern generalizes.  At the bifurcation from period $m$ to period $2m$,
+two things happen simultaneously:
+\begin{enumerate}
+\item \textbf{The cycle exists:} there is a point $x$ of exact period $m$,
+      meaning $f_r^m(x)=x$ but $f_r^k(x)\ne x$ for $0<k<m$.
+\item \textbf{The cycle is marginally unstable:} its multiplier equals $-1$,
+      i.e.\ $(f_r^m)'(x)=-1$.
+\end{enumerate}
+These are two polynomial equations in $x$ and $r$.  The first has degree $2^m$
+in $x$ (each composition of $f_r$ doubles the degree); the second has degree
+$2^m-1$.  As the examples above show, there is a lot of redundancy: the
+fixed-point equation for $f_r^m$ includes all fixed points of $f_r^k$ for every
+$k$ dividing $m$, and these must be factored out to isolate the genuinely
+period-$m$ points.
+
+Once the redundancy is removed, we have a system of two polynomial equations in
+$(x,r)$, and the goal is to \textbf{eliminate $x$}, producing a single
+polynomial in $r$ alone: the bifurcation polynomial.  Its roots are the values
+of $r$ at which a period $m\to 2m$ doubling occurs.
+
+In principle this is a textbook operation --- computing a \emph{resultant}.  In
+practice the expressions grow enormously (degree $2^m$ in $x$), and doing it by
+hand past the $2\to 4$ case is impractical.  This is where symbolic algebra
+earns its keep.
+
+%======================================================================
+\section{Eliminating $x$: the reduction strategy}
+\label{sec:elimination}
+%======================================================================
+
+The FORM program implements the elimination via \emph{iterated polynomial long
+division} in $x$ over the coefficient ring $\mathbb{Z}[r]$.
+
+The setup: after building the iterate $f_r^{2m}(x)$ symbolically and
+differentiating, the program holds two polynomial conditions, which it labels
+$P$ and $N$ (``positive'' and ``negative,'' for reasons explained shortly):
+\begin{align}
+P(x,r) &= (f_r^{2m})'(x) - 1 = 0, \label{eq:Pdef}\\
+N(x,r) &= (f_r^m)'(x) + 1 = 0. \label{eq:Ndef}
+\end{align}
+Condition $N$ says the period-$m$ multiplier is $-1$ (the cycle loses
+stability).  Condition $P$ says the period-$2m$ multiplier is $+1$ (the new
+cycle is being born).  At the exact bifurcation value of $r$, both conditions
+are satisfied by the same $x$ --- they describe the same event from two sides.
+
+A third polynomial, the \emph{constraint} $C(x,r)=f_r^m(x)-x$ (with
+lower-period factors divided out), pins down which $x$-values are on the
+period-$m$ cycle.  The program first uses $C$ to reduce the degrees of $P$ and
+$N$: from $C=0$, solve for the highest power of $x$ and substitute into $P$ and
+$N$ wherever that power appears.  This brings their $x$-degrees down.
+
+Then the \emph{ladder} phase kicks in: use $N$ to reduce $P$, then the reduced
+$P$ to further reduce $N$, alternating like the Euclidean algorithm.  At each
+step, known trivial factors ($r=\pm2$ and $r=4$, corresponding to degenerate
+cases) are stripped.  The iteration continues until both polynomials have
+minimal degree in $x$.
+
+Finally, the \emph{resultant} step: extract the coefficient of each power of
+$x$ from the two reduced polynomials, form cross-products to cancel the leading
+$x$-term, and take the GCD.  What survives is a polynomial in $r$ alone --- the
+bifurcation polynomial.
+
+\begin{remark}[Why $r=\pm2$ and $r=4$ are trivial]
+These values appear as roots at every bifurcation level and are not
+``interesting'' new bifurcation values.  $r=2$ places the critical point $x=1/2$
+at a fixed point (a superstable cycle); $r=4$ makes $f_r$ surjective on $[0,1]$
+(conjugate to the full tent map, all cycles unstable); $r=-2$ lies outside the
+physically meaningful range $[0,4]$ but satisfies the polynomial equations,
+which do not know about interval constraints.
+\end{remark}
+
+%======================================================================
+\section{The Feigenbaum constant}
+\label{sec:feigenbaum}
+%======================================================================
+
+Let $r_n$ denote the parameter value at which the period-$2^{n-1}\to 2^n$
+bifurcation occurs.  The first few are:
+\begin{center}
+\renewcommand{\arraystretch}{1.25}
+\begin{tabular}{cll}
+$n$ & $r_n$ & approximate value \\\hline
+1 & $3$ & $3$ \\
+2 & $1+\sqrt{6}$ & $3.44949\ldots$ \\
+3 & (root of a degree-4 poly) & $3.54409\ldots$ \\
+4 & (root of a degree-8 poly) & $3.56441\ldots$ \\
+$\vdots$ & & \\
+$\infty$ & (transcendental) & $3.56995\ldots$
+\end{tabular}
+\end{center}
+The intervals $r_n-r_{n-1}$ shrink rapidly, and their successive ratios converge
+to a constant:
+\begin{equation}
+\label{eq:feigenbaum}
+\delta = \lim_{n\to\infty}\frac{r_n-r_{n-1}}{r_{n+1}-r_n} = 4.6692016\ldots
+\end{equation}
+This is the \textbf{Feigenbaum constant}.  Its remarkable property is
+\emph{universality}: the same constant $\delta$ governs the period-doubling
+cascade of \emph{every} smooth unimodal (one-hump) map, not just the logistic
+one.  Replace $rx(1-x)$ with $r\sin(\pi x)$, or $r(1-(2x-1)^4)$, or any other
+smooth function with a single maximum --- the bifurcation ratios still converge
+to $4.669\ldots$
+
+Mitchell Feigenbaum discovered this universality in 1975 using a pocket
+calculator.  The explanation involves renormalization-group ideas: the
+period-doubling operation acts on the space of unimodal maps, and $\delta$ is
+the unstable eigenvalue of its linearization at a fixed point of that operator.
+The algebraic approach taken here --- computing the exact bifurcation
+polynomials --- provides complementary information: having the polynomials
+(rather than floating-point roots) opens the door to studying $\delta$ through
+the algebraic structure of the equations themselves.
+
+%======================================================================
+\section{What the code computes}
+\label{sec:code}
+%======================================================================
+
+The FORM program \texttt{feigenbaum.frm} automates the full pipeline described
+above.  A single call \texttt{\#call LogisticBifurcations(B,N)} computes the
+bifurcation polynomial for the period $B\cdot 2^{N-1}\to B\cdot 2^N$
+transition.  The steps are:
+
+\begin{enumerate}
+\item \textbf{Build the iterates.}  Starting from $x$, compose $f_r(x)=rx(1-x)$
+      symbolically $B\cdot 2^N$ times.  At the halfway point (step $B\cdot 2^{N-1}$),
+      snapshot $f_r^m(x)$ for the bifurcation conditions; at the quarter point,
+      snapshot the lower-period polynomial to factor out later.
+
+\item \textbf{Differentiate.}  Take $\partial/\partial x$ of both conditions to
+      obtain $P$ and $N$ (equations~\eqref{eq:Pdef}--\eqref{eq:Ndef}).
+
+\item \textbf{Remove lower-period solutions.}  Divide the period-$m$
+      fixed-point equation by the period-$m/2$ equation (using FORM's built-in
+      \texttt{div\_}), so only genuinely new cycle points remain.
+
+\item \textbf{Reduce.}  Use the constraint to lower the $x$-degree of $P$ and
+      $N$, then cross-reduce them against each other (the ``ladder''), stripping
+      $r=\pm2,4$ at each step.
+
+\item \textbf{Eliminate $x$.}  Extract $x$-coefficients from the reduced
+      ladders, form cross-products, and take the GCD to obtain a polynomial in
+      $r$ alone.
+
+\item \textbf{Output.}  The result is stored in \texttt{RSolution($m$)} ---
+      the minimal polynomial whose roots are the bifurcation parameter values.
+\end{enumerate}
+
+The main bottleneck is step~1: each composition doubles the degree, so
+$f_r^{2m}$ has degree $2^{2m}$ in $x$.  The $1\to 2$ and $2\to 4$ bifurcations
+are fast; higher doublings are expensive.
+
+%======================================================================
+\section{A hidden symmetry: conjugacy to $z^2+c$ and the variable $y=(r-1)^2$}
+\label{sec:conjugacy}
+%======================================================================
+
+Something unexpected happens when you substitute $r = 1+t$ into the bifurcation
+polynomials and expand: \emph{every odd power of $t$ vanishes}.  The $2\to4$
+polynomial $r^2-2r-5$, for instance, becomes
+\[
+(1+t)^2 - 2(1+t) - 5 = t^2 - 6,
+\]
+so with $y=t^2=(r-1)^2$ the bifurcation condition is simply $y=6$.  The $3\to6$
+polynomial (degree~6 in~$r$) likewise reduces to a cubic in~$y$, and the
+$4\to 8$ polynomial (degree~12) to a sextic:
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{ccc}
+bifurcation & $P(r)=0$ & $Q(y)=0$, \quad $y=(r-1)^2$ \\\hline
+$2\to 4$ & $r^2-2r-5$ & $y-6$ \\[2pt]
+$3\to 6$ & $r^6-6r^5+4r^4+24r^3$ & $y^3-11y^2+37y-108$\\
+         & $\quad{}-14r^2-36r-81$ & \\[2pt]
+$4\to 8$ & degree 12 & $y^6-18y^5+122y^4-516y^3$ \\
+         &           & $\quad{}+1508y^2-1872y+5688$
+\end{tabular}
+\end{center}
+The degree is halved every time: a degree-$2d$ polynomial in $r$ that is
+symmetric about $r=1$ becomes a degree-$d$ polynomial in $y$.  But
+\emph{why} should the bifurcation polynomials care about the point $r=1$?
+
+\subsection{Finding the conjugacy}
+
+Both the logistic map $f_r(x)=rx-rx^2$ and the ``standard'' quadratic
+$g_c(z)=z^2+c$ are quadratics in their respective variables, so it is natural
+to ask: is there an affine change of variables $z=\alpha x+\beta$ that turns
+one into the other?
+
+If such a change exists, then whenever $x_{n+1}=f_r(x_n)$ we need
+$z_{n+1}=g_c(z_n)$, i.e.\
+\[
+\alpha\, f_r(x) + \beta = (\alpha x+\beta)^2 + c.
+\]
+The left side is $\alpha(rx-rx^2)+\beta = -\alpha r\,x^2 + \alpha r\,x+\beta$.
+The right side is $\alpha^2 x^2+2\alpha\beta\,x+\beta^2+c$.  Matching
+coefficients of $x^2$, $x$, and $1$:
+\begin{align*}
+x^2\!: & \quad -\alpha r = \alpha^2
+        & \Longrightarrow\quad \alpha &= -r, \\
+x^1\!: & \quad \alpha r = 2\alpha\beta
+        & \Longrightarrow\quad \beta &= \tfrac{r}{2}, \\
+x^0\!: & \quad \beta = \beta^2+c
+        & \Longrightarrow\quad c &= \tfrac{r}{2}-\tfrac{r^2}{4}.
+\end{align*}
+So the unique affine conjugacy is
+\begin{equation}
+\label{eq:conjugacy}
+z = -r x + \tfrac{r}{2} = r\!\left(\tfrac12 - x\right), \qquad
+c = \frac{r}{2} - \frac{r^2}{4}.
+\end{equation}
+Every orbit of $f_r$ maps, point by point, to an orbit of $g_c$.  In
+particular, cycles of $f_r$ correspond to cycles of $g_c$ of the same period,
+with the same multiplier, so the two maps undergo bifurcations at exactly the
+same parameter values.
+
+\subsection{Why the symmetry follows}
+
+The key is in the formula for $c$.  Complete the square:
+\begin{equation}
+\label{eq:c-of-y}
+c = \frac{r}{2}-\frac{r^2}{4}
+  = -\frac{r^2-2r}{4}
+  = -\frac{(r-1)^2-1}{4}
+  = \frac{1-(r-1)^2}{4}.
+\end{equation}
+Write $t=r-1$ and $y=t^2=(r-1)^2$:
+\[
+c = \frac{1-y}{4}.
+\]
+The parameter $c$ depends on $r$ \emph{only through $(r-1)^2$}.  Two values of
+$r$ that sit symmetrically about $r=1$ --- say $r=1+t_0$ and $r=1-t_0$ ---
+give the same $y=t_0^2$, hence the same $c$, hence \emph{exactly the same
+quadratic map $g_c$}.  Every dynamical property (cycle existence, multiplier,
+bifurcation threshold) is determined by $c$, so it must be invariant under
+$r\mapsto 2-r$.
+
+For the bifurcation polynomials this means: if $r_0$ is a root then so is
+$2-r_0$.  But a polynomial whose roots come in $\{r_0,\,2-r_0\}$ pairs is
+exactly one that is symmetric about $r=1$, i.e.\ $P(1+t)=P(1-t)$ --- which is
+to say $P(1+t)$ contains only even powers of $t$.  Setting $y=t^2$ then
+produces a polynomial in $y$ of half the degree, with no leftover square roots.
+
+Setting $y=t^2$ then collapses each conjugate pair into a single root of a
+polynomial $Q(y)$ of half the degree.  The relationship $y = 1-4c$ is linear,
+so the $Q(y)$ are, up to an affine change, the bifurcation polynomials of the
+\emph{Mandelbrot set} --- the polynomials whose roots are the $c$-values at
+which $g_c$ undergoes period doubling.  For example, the $2\to4$ bifurcation
+at $y=6$ corresponds to $c=(1-6)/4=-5/4$, which is the period-2 bifurcation
+point of the Mandelbrot set; the $1\to2$ bifurcation at $r=3$ gives $y=4$ and
+$c=-3/4$, the tip of the main cardioid.
+
+\begin{remark}[Degree halving as a practical tool]
+Working with $Q(y)$ instead of $P(r)$ is not just aesthetically cleaner --- it
+halves the degree of every polynomial the computer must manipulate.  For the
+$4\to 8$ bifurcation the saving is modest (degree~6 vs.~12), but at higher
+levels the expressions grow exponentially and every factor of two in degree is a
+significant win.  One could, in principle, run the entire elimination in the
+$c$-parametrization (i.e., work with $g_c$ directly) and avoid the redundant
+factor altogether.
+\end{remark}
+
+\begin{thebibliography}{9}
+\bibitem{May1976}
+R.~M.~May, \emph{Simple mathematical models with very complicated dynamics},
+Nature \textbf{261} (1976), 459--467.
+\bibitem{Feigenbaum1978}
+M.~J.~Feigenbaum, \emph{Quantitative universality for a class of nonlinear
+transformations}, J.~Stat.\ Phys.\ \textbf{19} (1978), 25--52.
+\bibitem{Strogatz2015}
+S.~H.~Strogatz, \emph{Nonlinear Dynamics and Chaos}, 2nd~ed., Westview Press, 2015.
+\end{thebibliography}
+
+\end{document}
