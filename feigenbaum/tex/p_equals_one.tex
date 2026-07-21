@@ -1,0 +1,259 @@
+\documentclass[11pt]{article}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+
+\newtheorem{proposition}{Proposition}
+\newtheorem{remark}[proposition]{Remark}
+
+\title{Dividing polynomials by setting the divisor to one\\
+\large An iterative algorithm and its application to bifurcation polynomials}
+\author{}
+\date{\today}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Given polynomials $Q(z)$ and $p(z)$ with $p\mid Q$, we want the quotient
+$B=Q/p$ without performing multivariate polynomial long division.  The
+observation is simple: in the ring $\mathbb{Z}[z]/(p-1)$, the divisor $p$
+acts as $1$, so $Q\equiv B\cdot p\equiv B$.  When $\deg B<\deg p$, the
+reduction modulo $p-1$ recovers $B$ outright.  When $\deg B\ge\deg p$, an
+iterative ``base-$(p{-}1)$'' expansion reconstructs $B$ from a sequence of
+low-degree residues, each obtained by one cheap reduction.  We work out the
+algorithm, verify it on the period-doubling bifurcation polynomials of the
+quadratic map $g_c(z)=z^2+c$, and discuss where it helps and where it does
+not.
+\end{abstract}
+
+\tableofcontents
+
+%======================================================================
+\section{The idea}
+%======================================================================
+
+Suppose $Q=B\cdot p$ in $\mathbb{Z}[z,c]$ and we want $B$.  Consider the
+ring $R=\mathbb{Z}[z,c]/(p-1)$, where the relation $p(z,c)=1$ holds.  In
+this ring,
+\[
+Q = B\cdot p = B\cdot 1 = B.
+\]
+So reducing $Q$ modulo $p-1$ gives $B \bmod (p-1)$: a polynomial of degree
+$<\deg_z(p)$ in $z$ that agrees with $B$ in $R$.  If $\deg_z B<\deg_z p$,
+no information is lost and the result \emph{is} $B$.
+
+\paragraph{A tiny example.}
+$Q=z^2-4$, $p=z+2$, so $B=z-2$.  The relation $p=1$ gives $z=-1$.
+Reducing: $Q(-1)=1-4=-3$.  Since $B$ is linear, $B(z)=z+b$ with leading
+coefficient $1$ (from $Q$ and $p$), and $B(-1)=-3$ forces $b=-2$.  So
+$B=z-2$.
+
+%======================================================================
+\section{When $\deg B\ge\deg p$: the iterative expansion}
+\label{sec:iteration}
+%======================================================================
+
+Write $d=\deg_z(p-1)=\deg_z p$.  If $\deg_z B\ge d$, the reduction
+$Q\bmod(p{-}1)$ collapses $B$ past what we want.  The fix is a
+``base-$(p{-}1)$'' expansion: express $B$ in powers of $(p-1)$,
+\begin{equation}\label{eq:expansion}
+B = R_0 + R_1\,(p{-}1) + R_2\,(p{-}1)^2 + \cdots + R_N\,(p{-}1)^N,
+\end{equation}
+where each $R_k$ has $\deg_z R_k < d$ and
+$N=\lceil\deg_z B/d\rceil$.  This is analogous to writing an integer in a
+given base: each ``digit'' $R_k$ lives in the range $[0,\,(p{-}1))$ (as a
+polynomial in $z$), and the expansion is unique.
+
+\subsection{The recursion}
+
+Set $Q_0=Q$ (which equals $B\cdot p$).  Then iterate:
+\begin{enumerate}
+\item \textbf{Reduce:} $R_k = Q_k \bmod (p{-}1)$.  Since $p\equiv 1$, this
+      equals $A_k\bmod(p{-}1)$ where $Q_k=A_k\cdot p$.
+\item \textbf{Peel and divide:}
+      $Q_{k+1} = \dfrac{Q_k - R_k\cdot p}{p-1}$.
+\end{enumerate}
+The division in step~2 is exact: $Q_k\equiv R_k\cdot p\pmod{p{-}1}$ (because
+$p\equiv 1$ and $Q_k\equiv R_k$), so $(p{-}1)\mid(Q_k-R_k\cdot p)$.  Each
+step lowers $\deg_z Q_k$ by $d$, so after $N+1$ residues the process
+terminates with $Q_{N+1}=0$.
+
+\subsection{Why it is exact}
+
+The expansion~\eqref{eq:expansion} is the unique representation of $B$ in
+the ``$(p{-}1)$-adic'' basis.  Each $R_k$ is the $k$-th digit.  The
+recursion extracts digits from the top: $R_0$ is the lowest digit of $B$
+(its residue mod~$p{-}1$), and after peeling it off and dividing, $R_1$ is
+the next digit, and so on.  Since $B$ has finite degree, the process
+terminates.
+
+%======================================================================
+\section{Worked examples from the quadratic map}
+\label{sec:examples}
+%======================================================================
+
+The quadratic map $g_c(z)=z^2+c$ generates iterates $g_c^m(z)$ of degree
+$2^m$ in $z$.  The period-$m$ cycle polynomial is $g_c^m(z)-z$, and the
+``new period-$m$'' polynomial (excluding lower-period points) is
+\[
+B = \frac{g_c^m(z)-z}{g_c^{m/2}(z)-z} = \frac{Q}{p}.
+\]
+Both $Q$ and $p$ are \emph{monic} in $z$, so $p-1$ is also monic and the
+reduction rule $z^d=(\text{lower terms})$ involves no denominators.
+
+\subsection{The $3\to6$ bifurcation: $\deg B=6$, $\deg p=2$}
+
+Here $p=g(z)-z=z^2+c-z$, $Q=g^3(z)-z$ (degree~8), $B=Q/p$ (degree~6).
+The modulus is $p-1=z^2+c-z-1$, giving the rule $z^2=z-c+1$.  Four
+residues are needed ($N=3$):
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{cl}
+$k$ & $R_k$ \\\hline
+0 & $13-8c+20z$ \\
+1 & $20-4c+18z$ \\
+2 & $9+4z$ \\
+3 & $1$
+\end{tabular}
+\end{center}
+The residues have $\deg_z R_k<2$ and small $c$-degree (at most~1).  The
+reconstruction $B=R_0+R_1(p{-}1)+R_2(p{-}1)^2+R_3(p{-}1)^3$ matches the
+ground truth (from FORM's \texttt{div\_}) exactly, with zero remainder at
+every step.
+
+\subsection{The $4\to8$ bifurcation: $\deg B=12$, $\deg p=4$}
+
+Here $p=g^2(z)-z$ (degree~4), $Q=g^4(z)-z$ (degree~16), $B$ has degree~12
+in $z$ and degree~6 in $c$.  The modulus $p-1$ has degree~4, so
+$N=\lceil12/4\rceil=3$ and we need four residues:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{ccc}
+$k$ & $\deg_z R_k$ & $\deg_c R_k$ \\\hline
+0 & 3 & 1 \\
+1 & 2 & 1 \\
+2 & 1 & 0 \\
+3 & 0 & 0
+\end{tabular}
+\end{center}
+Again: exact reconstruction, zero remainder, and the $c$-degree of the
+residues stays low (at most~1, despite $B$ having $c$-degree~6).  The
+intermediate polynomials $Q_k$ decrease in $z$-degree by~4 each step
+(16, 12, 8, 4) and the division by $p-1$ (degree~4) is cheap.
+
+%======================================================================
+\section{Cost analysis}
+\label{sec:cost}
+%======================================================================
+
+The standard division $B=Q/p$ via FORM's \texttt{div\_} performs
+$\deg_z Q-\deg_z p$ steps of multivariate polynomial long division.  Each
+step involves the full coefficient ring $\mathbb{Z}[c]$, and the
+intermediate expressions can be large.
+
+The iterative algorithm replaces this with $N+1$ cycles of:
+\begin{enumerate}
+\item One reduction mod~$(p{-}1)$ (repeated application of
+      $z^d=\text{rhs}$ via \texttt{\#inside} --- very cheap).
+\item One polynomial multiplication $R_k\cdot p$ (the residue times the
+      divisor).
+\item One exact division by $p-1$ (degree~$d$, via \texttt{div\_}).
+\end{enumerate}
+The total number of degree-$d$ divisions is $N=\lceil\deg_z B/d\rceil$,
+compared to one degree-$\deg_z p$ division on a degree-$\deg_z Q$ dividend
+in the standard approach.  Each individual division is cheaper (the
+dividend $Q_k$ has degree at most $\deg_z Q-k\cdot d$, and the divisor has
+degree $d$), but there are $N$ of them.
+
+\paragraph{When it wins.}
+The win is largest when $\deg_z Q\gg\deg_z p$ and the coefficient ring
+(polynomials in $c$) is heavy: each step of the standard \texttt{div\_}
+manipulates the full coefficient bulk, while the iterative steps work on
+progressively smaller $Q_k$.  The reduction mod~$(p{-}1)$ via
+\texttt{\#inside} is essentially free (no active-expression overhead), and
+the degree-$d$ divisions are fast.
+
+\paragraph{When it does not.}
+If $\deg_z B$ is only slightly larger than $\deg_z p$ (say, $N=1$ or $2$),
+the overhead of the extra multiplications $R_k\cdot p$ and the $N$ separate
+\texttt{div\_} calls may exceed the cost of one direct \texttt{div\_}.  The
+algorithm also assumes the divisor $p$ is \emph{monic} in $z$; for
+non-monic $p$ (as in the logistic map, where the leading coefficient is a
+power of $r$), each reduction step would require dividing coefficients in
+the parameter ring, complicating the arithmetic.
+
+%======================================================================
+\section{Where it fails}
+\label{sec:fails}
+%======================================================================
+
+\subsection{Non-monic divisors}
+
+The reduction rule $z^d=\text{rhs}$ comes from solving $p-1=0$ for $z^d$.
+If $p$ is monic, $p-1$ is monic, and the rule has integer (polynomial)
+coefficients.  If $p$ has leading coefficient $\ell(c)\ne1$, the rule
+becomes $z^d = -(\text{lower terms})/\ell(c)$, introducing rational
+functions of $c$.  The iterative algorithm still works algebraically (the
+divisions are exact), but the intermediate expressions live in
+$\mathbb{Q}(c)[z]$ rather than $\mathbb{Z}[c,z]$, which FORM does not
+handle natively.
+
+For the quadratic map $g_c(z)=z^2+c$, all iterates are monic in $z$, so
+this is not an issue.  For the logistic map $f_r(x)=rx(1{-}x)$, the
+iterates have leading coefficient $(-r)^{2^m-1}$ in $x$, and the algorithm
+would need modification (e.g., pseudo-division, or clearing denominators at
+each step).
+
+\subsection{PrimitivePart interference}
+
+The library procedure \texttt{PolyReduce} calls \texttt{PrimitivePart}
+after each reduction, which divides out the GCD of numerical coefficients.
+This can flip signs or rescale the residues, breaking the exact
+reconstruction (each $R_k$ must be the \emph{true} remainder, not a
+primitive associate).  The workaround is to bypass \texttt{PolyReduce}
+entirely and perform the reduction with a raw \texttt{\#inside} loop:
+\begin{verbatim}
+    #inside $R
+        id z^d = rhs;
+    #endinside
+\end{verbatim}
+repeated until $\deg_z R<d$.  This is both simpler and faster than the
+general-purpose \texttt{PolyReduce} for this application.
+
+\subsection{Coefficient growth}
+
+In the worked examples, the $c$-degree of the residues $R_k$ stayed low
+(at most~1).  This is not guaranteed in general: each step multiplies $R_k$
+by $p$ (which has $c$-degree~1 for the quadratic map), and the division by
+$p-1$ can redistribute $c$-powers across terms.  For very high-order
+bifurcations, the intermediate $c$-degrees could grow, increasing the cost
+of the degree-$d$ divisions.  Whether this growth is a practical bottleneck
+depends on the specific polynomial structure and would need to be measured
+empirically at higher orders.
+
+%======================================================================
+\section{Summary}
+\label{sec:summary}
+%======================================================================
+
+\begin{center}
+\renewcommand{\arraystretch}{1.3}
+\begin{tabular}{lcc}
+ & Standard \texttt{div\_} & Iterative $(p{=}1)$ \\\hline
+Divisions & 1, degree $\deg p$ on degree $\deg Q$ & $N$, degree $d$ on
+  decreasing $Q_k$ \\
+Requires monic $p$? & no & yes (or pseudo-division) \\
+Extra operations & none & $N$ multiplications $R_k\cdot p$ \\
+PrimitivePart safe? & yes & no (use raw \texttt{\#inside}) \\
+Best regime & small $\deg Q/\deg p$ & large $\deg Q/\deg p$ with heavy
+  coefficients
+\end{tabular}
+\end{center}
+
+The algorithm is a direct analogue of radix conversion: the ``digits'' $R_k$
+are the coefficients of $B$ in the base $(p{-}1)$, and the iteration extracts
+them one at a time from the product $Q=B\cdot p$ by exploiting the identity
+$p\equiv 1\pmod{p{-}1}$.
+
+\end{document}

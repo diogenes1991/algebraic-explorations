@@ -1,0 +1,88 @@
+#-
+*===========================================================================
+*   polydivide.hrm  --  Experimental base-(p-1) polynomial division
+*
+*   Standalone include for the PolyDivide procedure.  NOT part of the main
+*   algexp.hrm library — this is experimental code under development.
+*
+*   Requires algexp.hrm (uses HighestPower).
+*
+*   Usage:
+*       #include- ../src/frm/algexp.hrm
+*       #include- polydivide.hrm
+*       ...
+*       #call PolyDivide($dividend,$divisor,z,$quotient)
+*===========================================================================
+#ifndef `POLYDIVH'
+#define POLYDIVH "1"
+
+#procedure PolyDivide(DIVIDEND,DIVISOR,SYMB,QUOTIENT)
+*
+*   Exact polynomial division: `QUOTIENT' = `DIVIDEND' / `DIVISOR' in `SYMB'.
+*   The divisor must divide the dividend exactly and be MONIC in `SYMB'.
+*
+*   Uses the base-(p-1) algorithm: in the ring Z[SYMB]/(DIVISOR-1), the
+*   divisor acts as 1, so DIVIDEND = QUOTIENT.  The quotient is recovered
+*   as a base-(DIVISOR-1) expansion:
+*       QUOTIENT = R_0 + R_1*(p-1) + R_2*(p-1)^2 + ...
+*   where each R_k has deg < deg(DIVISOR) and is obtained by one cheap
+*   reduction mod (DIVISOR-1) via #inside, followed by one div_ by
+*   (DIVISOR-1) (same degree as DIVISOR --- much smaller than DIVIDEND).
+*
+*   Arguments (all passed by name, FORM-style):
+*       DIVIDEND  - $-variable holding the polynomial to divide
+*       DIVISOR   - $-variable holding the monic divisor
+*       SYMB      - the variable to divide in
+*       QUOTIENT  - $-variable that receives the quotient
+
+    #call HighestPower(`DIVIDEND',`SYMB',$PDnd)
+    #call HighestPower(`DIVISOR',`SYMB',$PDdd)
+
+*   Build the mod-(p-1) reduction rule: SYMB^d = -(lower terms of p-1)
+    $PDpm1 = ``DIVISOR'' - 1;
+    $PDrhs = -($PDpm1) + `SYMB'^`$PDdd';
+    .sort
+
+*   Number of residues: ceil(deg(B)/deg(p)) + 1 where deg(B) = deg(Q)-deg(p)
+*   Loop bound: (deg(Q)-deg(p))/deg(p) iterations of peel-and-divide
+    $PDQk = ``DIVIDEND'';
+    `QUOTIENT' = 0;
+    $PDpow = 1;
+    .sort
+
+    #do PDi=0,{(`$PDnd'-`$PDdd')/`$PDdd'}
+*       --- Reduce Q_k mod (p-1) via #inside ---
+        $PDRk = $PDQk;
+        .sort
+        #call HighestPower($PDRk,`SYMB',$PDrd)
+        #do PDj=1,`$PDrd'
+            #inside $PDRk
+                id `SYMB'^`$PDdd' = `$PDrhs';
+            #endinside
+        #enddo
+
+*       --- Accumulate into quotient ---
+        #if (`PDi' == 0)
+            `QUOTIENT' = $PDRk;
+        #else
+            `QUOTIENT' = ``QUOTIENT'' + ($PDRk)*($PDpow);
+        #endif
+        .sort
+
+*       --- Peel and divide: Q_{k+1} = (Q_k - R_k * p) / (p-1) ---
+        $PDQk = $PDQk - ($PDRk)*(``DIVISOR'');
+        .sort
+        $PDQk = div_($PDQk,$PDpm1);
+        .sort
+
+*       --- Update power of (p-1) for next layer ---
+        #if (`PDi' == 0)
+            $PDpow = $PDpm1;
+        #else
+            $PDpow = ($PDpow)*($PDpm1);
+        #endif
+        .sort
+    #enddo
+#endprocedure
+
+#endif
