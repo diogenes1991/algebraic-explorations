@@ -293,6 +293,164 @@ $f_r^{2m}$ has degree $2^{2m}$ in $x$.  The $1\to 2$ and $2\to 4$ bifurcations
 are fast; higher doublings are expensive.
 
 %======================================================================
+\section{The dual problem: locating the cycle points}
+\label{sec:dual}
+%======================================================================
+
+Sections~\ref{sec:general}--\ref{sec:code} answer: \emph{for which values of~$r$
+does a period-$m\to2m$ bifurcation occur?}  Given the bifurcation polynomial
+$R(r)$, there is a natural companion question: \emph{at those values of~$r$,
+where in~$[0,1]$ does the cycle live?}  That is, find the polynomial $X(x)$
+whose roots are the period-$m$ cycle points at every bifurcation value of~$r$.
+
+\subsection{Setup}
+
+The cycle points are already encoded in the \emph{new-period-$m$ factor}
+$T(x,r)$, the polynomial called \texttt{TOID} in Section~\ref{sec:code}
+(Step~3): the quotient of $f_r^m(x)-x$ by the fixed-point equations of all
+proper sub-iterates.  Its roots in $x$ are exactly the genuine period-$m$ orbit
+points, with no lower-period contamination.
+
+For any root $r_0$ of $R(r)$, setting $T(x,r_0)=0$ gives the cycle points at
+that bifurcation value.  Eliminating $r$ from the system
+\begin{equation}
+\label{eq:dual-system}
+T(x,r) = 0, \qquad R(r) = 0
+\end{equation}
+yields $X(x) = \operatorname{Res}_r(T,R)$, a polynomial in $x$ alone whose
+roots are the cycle-point $x$-values over all bifurcation values of~$r$.
+
+\subsection{Why $r$-reduction does not reintroduce $x$}
+
+The critical structural fact is that $R(r)$ contains \emph{no~$x$}.  Reducing
+$T(x,r)$ modulo $R(r)$ in~$r$ is therefore a pure $r$-operation: the
+substitution rule
+\[
+r^d \;\longrightarrow\; \text{(lower-degree polynomial in }r\text{)}
+\]
+derived from $R(r)=0$ replaces $r$-powers in~$T$ while leaving the
+$x$-polynomial coefficients completely untouched.  After one pass the result has
+$r$-degree less than $d = \deg R$:
+\begin{equation}
+\label{eq:Tmod}
+T(x,r) \;\equiv\; A_0(x) + A_1(x)\,r + \cdots + A_{d-1}(x)\,r^{d-1}
+\pmod{R(r)}.
+\end{equation}
+The polynomials $A_k(x)$ are rearrangements of $x$-content already present in
+$T$~--- no new $x$-degrees appear.  This is the sense in which ``eliminating
+$r$ does not bring $x$ back'': the $r$-reduction is orthogonal to $x$.
+
+The contrast with the $x$-ladder is sharp: there, each pseudo-remainder step
+multiplies $r$-polynomial coefficients together, causing expression swell in the
+coefficient ring $\mathbb{Z}[r]$.  Here the $x$-polynomial coefficients are
+spectators throughout the $r$-reduction.
+
+\subsection{When $\deg R = 1$: direct substitution}
+
+If $R(r) = r-r_0$, the computation collapses to evaluating $X(x) = T(x,r_0)$.
+For the $1\to2$ bifurcation $r_0=3$, and the new-period-$1$ factor (with the
+trivial root $x=0$ divided out) is $T(x,r)=(r-1)-rx$.  Substituting:
+\[
+X(x) = T(x,3) = 2-3x, \qquad x = \tfrac{2}{3}.
+\]
+This is the period-1 fixed point at the bifurcation: its multiplier is
+$f_3'(2/3) = 3(1-\frac{4}{3}) = -1$, confirming it is the marginal point that
+triggers the $1\to2$ doubling.
+
+\subsection{When $\deg R > 1$: a ladder in $r$}
+\label{sec:dual-ladder}
+
+For $d = \deg R > 1$, the reduced polynomial $T \bmod R$ still has $r$-degree
+$d-1$, and computing $\operatorname{Res}_r(T\bmod R,\,R)$ requires eliminating
+$r$ from two polynomials of degrees $d-1$ and $d$.  This is structurally the
+same operation as Phase~6 of the $x$-elimination (Section~\ref{sec:code}),
+applied with $r$ in the role of $x$: extract the coefficients of $r^0,
+r^1,\ldots$ from $T\bmod R$, form the Sylvester cross-products, and take the
+GCD.  The ladder in $r$ has $O(d)$ steps.
+
+So the dual also requires a ladder; the question is whether it is shorter.
+Reducing $T(x,r)$ modulo $R(r)$ in $r$ requires $O(\deg_r T - d)$ substitution
+steps (bringing $r$-degree from $\deg_r T$ down to $d-1$), followed by a
+$O(d)$-step resultant.  The first cost is determined by how large $\deg_r T$ is
+--- a question whose answer depends on the period and which is best measured
+empirically.  The second cost is $O(d) = O(\deg R)$, growing much more slowly
+than the $O(2^m)$ steps of the $x$-ladder.
+
+\begin{remark}[The initial reduction cost]
+For the logistic map, the new-period-$m$ factor $T(x,r)$ inherits a large
+$r$-degree from the iterates: $f_r^m(x)$ has $r$-degree $2^m-1$, and dividing
+out lower-period factors reduces this but does not eliminate it.  The cost of
+reducing $T \bmod R$ may therefore be comparable to the $x$-ladder in raw step
+count, even though each individual step handles $x$-polynomials of degree $m$
+(bounded and small) rather than growing $r$-polynomial coefficients.  A definitive
+comparison requires profiling the actual computation at higher periods.
+\end{remark}
+
+\subsection{Worked example: the $2\to4$ bifurcation}
+\label{sec:dual-24}
+
+For $m=2$ the new-period-$2$ factor is
+\begin{equation}
+\label{eq:T24}
+T(x,r) = r^2x^2 - r(r+1)\,x + (r+1),
+\end{equation}
+and the bifurcation polynomial is $R(r) = r^2-2r-5$.  Since $d=\deg R=2$, the
+result~\eqref{eq:Tmod} is linear in~$r$.
+
+\textit{Step~1: reduce.}\;  From $R(r)=0$ extract $r^2 \equiv 2r+5$, so
+$r(r+1)=r^2+r\equiv 3r+5$.  Substituting into~\eqref{eq:T24}:
+\begin{equation}
+\label{eq:Tmod24}
+T\bmod R = (5x^2 - 5x + 1) + r\,(2x^2-3x+1).
+\end{equation}
+
+\textit{Step~2: eliminate $r$.}\;  Set $A = 5x^2-5x+1$ and $B = 2x^2-3x+1$,
+so $T\bmod R = A + Br$.  At any cycle point $A + Br = 0$, giving $r = -A/B$.
+Substituting into $R(r) = r^2-2r-5 = 0$:
+\[
+\frac{A^2}{B^2} + \frac{2A}{B} - 5 = 0
+\;\;\Longrightarrow\;\;
+A^2 + 2AB - 5B^2 = 0.
+\]
+Expanding term by term:
+\begin{align*}
+A^2 &= 25x^4 - 50x^3 + 35x^2 - 10x + 1,\\
+2AB &= 20x^4 - 50x^3 + 44x^2 - 16x + 2,\\
+5B^2 &= 20x^4 - 60x^3 + 65x^2 - 30x + 5,
+\end{align*}
+giving
+\begin{equation}
+\label{eq:X24}
+X(x) = 25x^4 - 40x^3 + 14x^2 + 4x - 2.
+\end{equation}
+The four roots are the period-$2$ cycle points at the two bifurcation values
+$r = 1 \pm \sqrt{6}$: at each value of~$r$ the factor~\eqref{eq:T24} has two
+roots, and with two roots of~$R$ the total is four.  One can verify this
+factorization directly:
+\[
+X(x) = \tfrac{1}{25}\,(A + \sqrt{6}\,B)(A - \sqrt{6}\,B),
+\]
+with each factor being (a scalar multiple of) $T\bigl(x,\,1\pm\sqrt{6}\bigr)$.
+
+\begin{remark}[Structural collapse at $m=2$]
+\label{rem:m2collapse}
+For the $2\to4$ case a stronger simplification occurs on the $x$-elimination
+side.  After reducing $N(x,r)$ and $P(x,r)$ modulo $T(x,r)$ in $x$ (Step~4 of
+the pipeline), one finds
+\[
+N \;\bmod\; T \;=\; -r^4\,R(r), \qquad P \;\bmod\; T \;=\; 0.
+\]
+The second identity holds because at any period-$2$ point
+$(f_r^4)'(x) = \bigl[(f_r^2)'(x)\bigr]^2 = (-1)^2 = 1$,
+so $P = (f_r^4)'(x)-1$ vanishes identically there.  The first expresses the
+chain-rule derivative $(f_r^2)'(x)+1$, reduced on the $2$-cycle, as a multiple
+of the bifurcation condition.  As a result both $N$ and $P$ are $x$-free after
+Step~4, the $x$-ladder (Step~5) runs zero iterations, and the bifurcation
+polynomial is extracted directly as $\gcd(N,P) = r^4 R(r)$, after which the
+$r^4$ factor is removed by the trivial-root stripping of Step~6.
+\end{remark}
+
+%======================================================================
 \section{A hidden symmetry: conjugacy to $z^2+c$ and the variable $y=(r-1)^2$}
 \label{sec:conjugacy}
 %======================================================================

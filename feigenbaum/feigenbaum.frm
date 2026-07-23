@@ -235,11 +235,12 @@ Table RSolution(1);
 Local dummy = 1;
 .sort
 
-$order = 4;
+$order = 1;
+$base = 3;
 .sort
 
-#call LogisticBifurcations(`$order',1)
+#call LogisticBifurcations(`$base',`$order')
 
 .sort
-print [RSolution(`$order')];
+print [RSolution({`$base'*2^{`$order'}/2})];
 .end
