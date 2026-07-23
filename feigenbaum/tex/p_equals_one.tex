@@ -142,6 +142,82 @@ residues stays low (at most~1, despite $B$ having $c$-degree~6).  The
 intermediate polynomials $Q_k$ decrease in $z$-degree by~4 each step
 (16, 12, 8, 4) and the division by $p-1$ (degree~4) is cheap.
 
+
+%======================================================================
+\section{A second experiment: coefficient descent}
+\label{sec:descent}
+%======================================================================
+
+The first implementation of the idea above still used \texttt{div\_}: after each
+residue modulo $(p-1)$, it formed
+\[
+Q_{k+1}=\frac{Q_k-R_kp}{p-1}.
+\]
+That was useful as a correctness probe, but it did not answer the sharper question:
+can Phase~3 avoid \texttt{div\_} altogether and rely only on cheap FORM operations
+such as coefficient extraction, multiplication, subtraction, and \texttt{.sort}?
+
+The next experiment was therefore a direct coefficient descent.  Assume again that
+$p$ is monic of degree $d$ in $z$, that $p\mid Q$, and write $n=\deg_z Q$.  Set
+$R^{(0)}=Q$ and $B=0$.  For $j=n,n-1,\ldots,d$, let $a_j$ be the coefficient of
+$z^j$ in the current remainder $R^{(n-j)}$.  Then replace
+\[
+B \leftarrow B+a_j z^{j-d},
+\qquad
+R \leftarrow R-a_j z^{j-d}p.
+\]
+Because $p$ is monic, this cancels the current $z^j$ term without dividing by any
+coefficient.  If the quotient is exact, the final remainder is zero.  This is just
+long division viewed as triangular coefficient matching, but the FORM procedure
+\texttt{PolyDivideDescent} never calls \texttt{div\_}; it uses the library helper
+\texttt{CoeffAt} to read $a_j$ and then updates the remainder explicitly.
+
+This is not yet the $(p-1)$-adic linear-equation system I originally wanted to test.
+It is a simpler descent probe: before trying to solve for the digits $R_k$ in
+\[
+B=R_0+R_1(p-1)+\cdots+R_N(p-1)^N,
+\]
+it asks whether ordinary top-down coefficient matching is already viable in FORM.
+
+\subsection{What worked}
+
+The descent routine was validated against FORM's \texttt{div\_} in the small monic
+quadratic cases:
+\begin{center}
+\renewcommand{\arraystretch}{1.2}
+\begin{tabular}{lccc}
+case & divisor & quotient degree & result \\\hline
+$g^2(z)-z$ & $g(z)-z$ & $2$ & match, zero remainder \\
+$g^3(z)-z$ & $g(z)-z$ & $6$ & match, zero remainder \\
+$g^4(z)-z$ & $g^2(z)-z$ & $12$ & match, zero remainder \\
+$g^5(z)-z$ & $g(z)-z$ & $30$ & zero remainder
+\end{tabular}
+\end{center}
+
+One FORM-specific detail mattered.  The coefficient scratch variable must be reset to
+zero before every call to \texttt{CoeffAt}; otherwise a missing coefficient can leave
+stale state in the descent and produce a false nonzero quotient term.  After adding
+that reset, the $g^4/g^2$ test, which has missing intermediate leading coefficients,
+matched \texttt{div\_} exactly.
+
+\subsection{What did not work yet}
+
+I then tried the actual monic Phase~3 stress quotient for the quadratic model:
+\[
+\frac{g^{10}(z)-z}{g^5(z)-z}.
+\]
+Building $g^{10}(z)-z$ took about $14$ seconds in this FORM run.  The no-\texttt{div\_}
+descent quotient was still running after roughly three and a half minutes and was
+interrupted.  So the naive descent is correct, but it has not yet solved the large
+$5\to10$ bottleneck.
+
+The likely reason is that the procedure repeatedly asks FORM to extract a coefficient
+from a very large current remainder, then expands a large subtraction.  Avoiding
+\texttt{div\_} removed one expensive primitive, but it did not remove the expression
+swell in the remainder itself.  The next version should avoid carrying the full
+remainder through hundreds of descent steps, or return to the $(p-1)$-adic digit idea
+and solve the triangular coefficient equations for the low-degree digits directly.
+
 %======================================================================
 \section{Cost analysis}
 \label{sec:cost}

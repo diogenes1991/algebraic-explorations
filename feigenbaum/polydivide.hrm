@@ -1,17 +1,18 @@
 #-
 *===========================================================================
-*   polydivide.hrm  --  Experimental base-(p-1) polynomial division
+*   polydivide.hrm  --  Experimental polynomial division helpers
 *
-*   Standalone include for the PolyDivide procedure.  NOT part of the main
-*   algexp.hrm library — this is experimental code under development.
+*   Standalone include for experimental quotient procedures.  NOT part of the
+*   main algexp.hrm library -- this is code under development.
 *
-*   Requires algexp.hrm (uses HighestPower).
+*   Requires algexp.hrm (uses HighestPower and CoeffAt).
 *
 *   Usage:
 *       #include- ../src/frm/algexp.hrm
 *       #include- polydivide.hrm
 *       ...
 *       #call PolyDivide($dividend,$divisor,z,$quotient)
+*       #call PolyDivideDescent($dividend,$divisor,z,$quotient)
 *===========================================================================
 #ifndef `POLYDIVH'
 #define POLYDIVH "1"
@@ -43,8 +44,7 @@
     $PDrhs = -($PDpm1) + `SYMB'^`$PDdd';
     .sort
 
-*   Number of residues: ceil(deg(B)/deg(p)) + 1 where deg(B) = deg(Q)-deg(p)
-*   Loop bound: (deg(Q)-deg(p))/deg(p) iterations of peel-and-divide
+*   Number of residues: floor(deg(B)/deg(p)) + 1 where deg(B) = deg(Q)-deg(p)
     $PDQk = ``DIVIDEND'';
     `QUOTIENT' = 0;
     $PDpow = 1;
@@ -83,6 +83,51 @@
         #endif
         .sort
     #enddo
+#endprocedure
+
+*---------------------------------------------------------------------------
+#procedure PolyDivideDescent(DIVIDEND,DIVISOR,SYMB,QUOTIENT)
+*
+*   Exact monic polynomial quotient without FORM's div_.
+*
+*   This is the direct coefficient-descent experiment: if DIVISOR is monic in
+*   SYMB and divides DIVIDEND, repeatedly read the current leading coefficient
+*   of the remainder, subtract that coefficient times the matching shifted
+*   divisor, and accumulate the shifted coefficient in QUOTIENT.
+*
+*   It is still polynomial long division mathematically, but the FORM operations
+*   are only coefficient extraction, multiplication, subtraction, and .sort.
+*
+*   Arguments (all passed by name, FORM-style):
+*       DIVIDEND  - $-variable holding the polynomial to divide
+*       DIVISOR   - $-variable holding the monic divisor
+*       SYMB      - the variable to divide in
+*       QUOTIENT  - $-variable that receives the quotient
+
+    #call HighestPower(`DIVIDEND',`SYMB',$PDDnd)
+    #call HighestPower(`DIVISOR',`SYMB',$PDDdd)
+
+    $PDDrem = ``DIVIDEND'';
+    `QUOTIENT' = 0;
+    .sort
+
+    #do PDDdeg=`$PDDnd',`$PDDdd',-1
+        $PDDcoef = 0;
+        .sort
+        #call CoeffAt($PDDrem,`SYMB',`PDDdeg',$PDDcoef)
+
+        #if ({`PDDdeg'-`$PDDdd'} == 0)
+            $PDDterm = $PDDcoef;
+        #else
+            $PDDterm = $PDDcoef*`SYMB'^{`PDDdeg'-`$PDDdd'};
+        #endif
+        `QUOTIENT' = ``QUOTIENT'' + $PDDterm;
+        $PDDrem = $PDDrem - ($PDDterm)*(``DIVISOR'');
+        .sort
+    #enddo
+
+    $PDDremainder = `$PDDrem';
+    .sort
 #endprocedure
 
 #endif
